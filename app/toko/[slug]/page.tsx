@@ -1,7 +1,16 @@
 'use client';
 import { useEffect, useState, useMemo } from 'react';
 import { useParams, notFound } from 'next/navigation';
-// ... (import lainnya tetap sama)
+import Image from 'next/image';
+import Link from 'next/link';
+import { ArrowLeft, ShoppingBag, Search, Star, MapPin, Clock } from 'lucide-react';
+import { isOpen } from '@/lib/store';
+import { rp } from '@/lib/format';
+import { CartProvider, useCart } from '@/context/CartContext';
+import ProductCard from '@/components/ProductCard';
+import CartModal from '@/components/CartModal';
+import FloatingCart from '@/components/FloatingCart';
+import ThemeToggle from '@/components/ThemeToggle';
 import { supabase } from '@/lib/supabase';
 import type { Store, Product } from '@/lib/types';
 
@@ -15,7 +24,6 @@ export default function StorePage() {
 
   useEffect(() => {
     async function fetchData() {
-      // 1. Ambil data toko
       const { data: storeData } = await supabase.from('stores').select('*').eq('slug', slug).single();
       
       if (storeData) {
@@ -26,7 +34,6 @@ export default function StorePage() {
         };
         setStore(formattedStore as Store);
 
-        // 2. Ambil data produk berdasarkan ID toko
         const { data: productData } = await supabase.from('products').select('*').eq('store_id', storeData.id);
         if (productData) {
           const formattedProducts = productData.map((p: any) => ({
@@ -51,23 +58,7 @@ export default function StorePage() {
   );
 }
 
-export default function StorePage() {
-  const params = useParams();
-  const slug = typeof params.slug === 'string' ? params.slug : '';
-  const store = getStoreBySlug(slug);
-
-  if (!store) return notFound();
-  const products = getProductsByStore(store.id);
-
-  return (
-    <CartProvider>
-      <StoreView store={store} products={products} />
-    </CartProvider>
-  );
-}
-
-function StoreView({ store, products }: { store: ReturnType<typeof getStoreBySlug>; products: ReturnType<typeof getProductsByStore> }) {
-  if (!store) return null;
+function StoreView({ store, products }: { store: Store; products: Product[] }) {
   const { cart, add, items } = useCart();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
@@ -88,7 +79,6 @@ function StoreView({ store, products }: { store: ReturnType<typeof getStoreBySlu
 
   return (
     <>
-      {/* HEADER */}
       <header className="sticky top-0 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800">
         <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
@@ -121,12 +111,10 @@ function StoreView({ store, products }: { store: ReturnType<typeof getStoreBySlu
       </header>
 
       <main className="max-w-md mx-auto px-4 pt-4 pb-32">
-        {/* Cover */}
         <div className="relative w-full h-40 rounded-2xl overflow-hidden mb-3 bg-slate-100 dark:bg-slate-800">
           <Image src={store.cover} alt={store.nama} fill sizes="600px" className="object-cover" />
         </div>
 
-        {/* Info toko */}
         <div className="mb-4">
           <h2 className="font-extrabold text-lg text-slate-900 dark:text-white">{store.nama}</h2>
           <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mt-0.5">{store.kategori}</p>
@@ -147,7 +135,6 @@ function StoreView({ store, products }: { store: ReturnType<typeof getStoreBySlu
           )}
         </div>
 
-        {/* Search + kategori */}
         <div className="relative mb-3">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input value={search} onChange={e => setSearch(e.target.value)}
@@ -166,7 +153,6 @@ function StoreView({ store, products }: { store: ReturnType<typeof getStoreBySlu
           ))}
         </div>
 
-        {/* Produk grid */}
         {filtered.length === 0 ? (
           <div className="text-center py-10 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
             <p className="text-xs text-slate-400">Tidak ada menu yang ditemukan</p>
