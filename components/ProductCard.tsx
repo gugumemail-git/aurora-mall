@@ -47,15 +47,10 @@ export default function ProductCard({ product, inCart, onAdd }: Props) {
           </button>
         ) : (
           <div className="flex items-center justify-between bg-emerald-600 text-white rounded-xl p-1">
-                    {qty === 0 ? (
-          <button onClick={() => onAdd(1)} disabled={product.stok === 0}
-            className="w-full py-1.5 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 font-bold rounded-xl text-xs flex items-center justify-center gap-1 transition disabled:opacity-50">
-            <Plus className="w-3.5 h-3.5" /> Tambah
-          </button>
-        ) : (
-          <div className="flex items-center justify-between bg-emerald-600 text-white rounded-xl p-1">
             <button onClick={() => onAdd(-1)} className="w-6 h-6 flex items-center justify-center font-bold text-sm hover:bg-emerald-700 rounded-lg">−</button>
-            <span className="text-xs font-bold">{qty} {product.stok !== undefined && <span className="text-[10px] font-normal opacity-80">/ {product.stok}</span>}</span>
+            <span className="text-xs font-bold">
+              {qty} {product.stok !== undefined && <span className="text-[10px] font-normal opacity-80">/ {product.stok}</span>}
+            </span>
             <button onClick={() => onAdd(1)} disabled={qty >= (product.stok || 0)} className="w-6 h-6 flex items-center justify-center font-bold text-sm hover:bg-emerald-700 rounded-lg disabled:opacity-50">+</button>
           </div>
         )}
