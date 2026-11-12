@@ -142,6 +142,19 @@ export default function AdminPage() {
     else { setMessage('Menu dihapus.'); fetchData(); }
   };
 
+  // FUNGSI HAPUS PESANAN
+  const handleDeleteOrder = async (id: string) => {
+    if (!confirm('Yakin ingin menghapus pesanan ini? Data yang dihapus tidak bisa dikembalikan.')) return;
+    
+    const { error } = await supabase.from('orders').delete().eq('id', id);
+    if (error) {
+      setMessage('Gagal hapus pesanan: ' + error.message);
+    } else {
+      setMessage('Pesanan berhasil dihapus.');
+      fetchData();
+    }
+  };
+
   if (!session) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
@@ -159,7 +172,6 @@ export default function AdminPage() {
     <div className="min-h-screen bg-slate-50 p-4 pb-20">
       <div className="max-w-5xl mx-auto">
         
-        {/* HEADER */}
         <div className="flex items-center justify-between mb-6 bg-white p-4 rounded-2xl shadow-sm border">
           <div className="flex items-center gap-3">
             <Link href="/" className="p-2 bg-slate-100 rounded-lg hover:bg-slate-200 transition"><ArrowLeft className="w-5 h-5" /></Link>
@@ -177,7 +189,6 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* TAB MENU */}
         <div className="flex gap-2 mb-6 overflow-x-auto hide-scrollbar">
           <button onClick={() => { setActiveTab('stores'); setShowStoreForm(false); setShowProductForm(false); }} 
             className={`flex-1 min-w-[120px] py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition ${activeTab === 'stores' ? 'bg-emerald-600 text-white' : 'bg-white text-slate-600 shadow-sm border'}`}>
@@ -273,7 +284,7 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* ================= TAB MENU (Dirapikan) ================= */}
+        {/* ================= TAB MENU ================= */}
         {activeTab === 'products' && (
            <div className="space-y-4">
            <button onClick={() => { setEditId(null); setProductForm({ store_id: '', nama: '', harga: '', kategori: 'Makanan', deskripsi: '', foto: '' }); setShowProductForm(true); }}
@@ -347,56 +358,64 @@ export default function AdminPage() {
          </div>
         )}
 
-        {/* ================= TAB PESANAN (BARU) ================= */}
+        {/* ================= TAB PESANAN ================= */}
         {activeTab === 'orders' && (
           <div className="space-y-4">
-            <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl flex items-center justify-between">
+            <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider mb-1">Total Pendapatan</p>
                 <p className="text-2xl font-black text-emerald-700">Rp {orders.reduce((sum, o) => sum + o.total, 0).toLocaleString('id-ID')}</p>
               </div>
-              <div className="text-right">
+              <div className="sm:text-right">
                 <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider mb-1">Total Pesanan</p>
                 <p className="text-2xl font-black text-emerald-700">{orders.length}</p>
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-sm border overflow-x-auto">
-              <table className="w-full text-left text-sm min-w-[600px]">
-                <thead className="bg-slate-50 border-b">
-                  <tr><th className="p-3">Waktu & Pemesan</th><th className="p-3">Pesanan</th><th className="p-3 text-right">Total</th></tr>
-                </thead>
-                <tbody>
-                  {orders.length === 0 ? (
-                    <tr><td colSpan={3} className="p-6 text-center text-slate-400">Belum ada pesanan masuk</td></tr>
-                  ) : orders.map(o => {
+            <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
+              {orders.length === 0 ? (
+                <div className="p-8 text-center text-slate-400">Belum ada pesanan masuk</div>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {orders.map(o => {
                     const toko = stores.find(s => s.id === o.store_id)?.nama || 'Toko Terhapus';
                     return (
-                      <tr key={o.id} className="border-b last:border-0 hover:bg-slate-50">
-                        <td className="p-3">
-                          <p className="font-bold text-slate-800">{o.customer_name}</p>
-                          {/* TAMBAHKAN BARIS INI UNTUK MENAMPILKAN WA */}
+                      <div key={o.id} className="p-4 hover:bg-slate-50 transition flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                        
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-bold text-slate-800">{o.customer_name}</p>
+                            <span className="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded font-semibold">{o.order_type}</span>
+                          </div>
                           <p className="text-[11px] font-semibold text-emerald-600 mb-1">
-                            📱 {o.customer_wa || '-'}
+                            📱 {o.customer_wa ? o.customer_wa : '-'}
                           </p>
-                          <p className="text-[10px] text-slate-500">{new Date(o.created_at).toLocaleString('id-ID')}</p>
-                          <span className="inline-block mt-1 bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded font-semibold">{o.order_type}</span>
-                        </td>
-                        <td className="p-3">
+                          <p className="text-[10px] text-slate-400">{new Date(o.created_at).toLocaleString('id-ID')}</p>
+                        </div>
+
+                        <div className="flex-1 min-w-0">
                           <p className="text-[11px] font-bold text-emerald-600 mb-1">{toko}</p>
                           {o.items.map((item: any, i: number) => (
                             <p key={i} className="text-[11px] text-slate-600">{item.jumlah}x {item.nama}</p>
                           ))}
                           {o.notes && <p className="text-[10px] text-slate-400 mt-1 italic">"{o.notes}"</p>}
-                        </td>
-                        <td className="p-3 text-right font-bold text-slate-800">
-                          Rp {o.total.toLocaleString('id-ID')}
-                        </td>
-                      </tr>
+                        </div>
+
+                        <div className="flex items-center sm:flex-col sm:items-end justify-between sm:justify-start gap-2 shrink-0">
+                          <p className="font-bold text-slate-800 text-sm">Rp {o.total.toLocaleString('id-ID')}</p>
+                          <button 
+                            onClick={() => handleDeleteOrder(o.id)} 
+                            className="flex items-center justify-center gap-1.5 text-xs font-bold text-white bg-red-600 hover:bg-red-700 px-3 py-2 rounded-lg transition shadow-md"
+                          >
+                            <Trash2 className="w-4 h-4" /> HAPUS
+                          </button>
+                        </div>
+
+                      </div>
                     );
                   })}
-                </tbody>
-              </table>
+                </div>
+              )}
             </div>
           </div>
         )}
