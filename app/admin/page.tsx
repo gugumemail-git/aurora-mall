@@ -389,8 +389,6 @@ export default function AdminPage() {
 
            <div className="bg-white rounded-2xl shadow-sm border overflow-x-auto">
              <table className="w-full text-left text-sm min-w-[600px]">
-                          <div className="bg-white rounded-2xl shadow-sm border overflow-x-auto">
-             <table className="w-full text-left text-sm min-w-[600px]">
                <thead className="bg-slate-50 border-b">
                  <tr>
                    <th className="p-3">Menu & Toko</th>
@@ -413,7 +411,6 @@ export default function AdminPage() {
                        </td>
                        <td className="p-3 text-emerald-600 font-bold">Rp {p.harga.toLocaleString('id-ID')}</td>
                        <td className="p-3">
-                         {/* TOMBOL TOGGLE STATUS */}
                          <button 
                            onClick={() => handleToggleAvailability(p.id, p.is_available)}
                            className={`px-2 py-1 rounded text-[10px] font-bold uppercase transition ${p.is_available ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}
@@ -429,8 +426,6 @@ export default function AdminPage() {
                    );
                  })}
                </tbody>
-             </table>
-           </div>
              </table>
            </div>
          </div>
