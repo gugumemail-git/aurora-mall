@@ -150,6 +150,12 @@ export default function AdminPage() {
     else { setMessage('Menu dihapus.'); fetchData(); }
   };
 
+  const handleToggleAvailability = async (id: string, currentStatus: boolean) => {
+    const { error } = await supabase.from('products').update({ is_available: !currentStatus }).eq('id', id);
+    if (error) setMessage('Gagal update status: ' + error.message);
+    else { setMessage('Status menu diperbarui.'); fetchData(); }
+  };
+
   const handleDeleteOrder = async (id: string) => {
     if (!confirm('Yakin ingin menghapus pesanan ini? Data yang dihapus tidak bisa dikembalikan.')) return;
     const { error } = await supabase.from('orders').delete().eq('id', id);
@@ -383,8 +389,15 @@ export default function AdminPage() {
 
            <div className="bg-white rounded-2xl shadow-sm border overflow-x-auto">
              <table className="w-full text-left text-sm min-w-[600px]">
+                          <div className="bg-white rounded-2xl shadow-sm border overflow-x-auto">
+             <table className="w-full text-left text-sm min-w-[600px]">
                <thead className="bg-slate-50 border-b">
-                 <tr><th className="p-3">Menu & Toko</th><th className="p-3">Harga</th><th className="p-3 text-right">Aksi</th></tr>
+                 <tr>
+                   <th className="p-3">Menu & Toko</th>
+                   <th className="p-3">Harga</th>
+                   <th className="p-3">Status</th>
+                   <th className="p-3 text-right">Aksi</th>
+                 </tr>
                </thead>
                <tbody>
                  {products.map(p => {
@@ -399,6 +412,15 @@ export default function AdminPage() {
                          </div>
                        </td>
                        <td className="p-3 text-emerald-600 font-bold">Rp {p.harga.toLocaleString('id-ID')}</td>
+                       <td className="p-3">
+                         {/* TOMBOL TOGGLE STATUS */}
+                         <button 
+                           onClick={() => handleToggleAvailability(p.id, p.is_available)}
+                           className={`px-2 py-1 rounded text-[10px] font-bold uppercase transition ${p.is_available ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}
+                         >
+                           {p.is_available ? 'Tersedia' : 'Habis'}
+                         </button>
+                       </td>
                        <td className="p-3 text-right space-x-2">
                          <button onClick={() => { setEditId(p.id); setProductForm({...p, harga: p.harga.toString()}); setShowProductForm(true); }} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"><Edit className="w-4 h-4"/></button>
                          <button onClick={() => handleDeleteProduct(p.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4"/></button>
@@ -407,6 +429,8 @@ export default function AdminPage() {
                    );
                  })}
                </tbody>
+             </table>
+           </div>
              </table>
            </div>
          </div>

@@ -26,6 +26,7 @@ export type Product = {
   kategori: string;
   deskripsi: string;
   foto: string;
+  is_available?: boolean; // <-- Tambahkan ini
 };
 
 export type CartItem = Product & { jumlah: number };
