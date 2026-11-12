@@ -6,7 +6,7 @@ export type Store = {
   deskripsi: string;
   cover: string;
   logo: string;
-  whatsapp: string; // <-- TAMBAHKAN BARIS INI
+  whatsapp: string;
   rating: number;
   reviews: number;
   jarak: number;
@@ -26,7 +26,8 @@ export type Product = {
   kategori: string;
   deskripsi: string;
   foto: string;
-  is_available?: boolean; // <-- Tambahkan ini
+  stok?: number;          // <-- Tambahan Stok
+  is_available?: boolean; // <-- Tambahan Status Ketersediaan
 };
 
 export type CartItem = Product & { jumlah: number };
