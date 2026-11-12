@@ -7,7 +7,6 @@ import { useToast } from '@/context/ToastContext';
 import type { Store } from '@/lib/types';
 import { rp } from '@/lib/format';
 
-const WA_NUMBER = '628192003025';
 const TAX = 5;
 
 type Props = { open: boolean; onClose: () => void; store: Store };
@@ -49,9 +48,11 @@ export default function CartModal({ open, onClose, store }: Props) {
     text += `──────────────────\n`;
     text += `_Mohon segera diproses. Terima kasih!_`;
 
-    window.open(`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(text)}`, '_blank');
-    show('Membuka WhatsApp...', 'success');
-  };
+  // Ambil nomor WA dari data toko. Jika kosong, gunakan nomor cadangan.
+  const targetWA = store.whatsapp || '628192003025'; 
+  window.open(`https://wa.me/${targetWA}?text=${encodeURIComponent(text)}`, '_blank');
+  show('Membuka WhatsApp...', 'success');
+};
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">

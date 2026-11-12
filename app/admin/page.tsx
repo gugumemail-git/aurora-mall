@@ -4,11 +4,12 @@ import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { 
   ArrowLeft, Store, PlusCircle, Utensils, CheckCircle2, 
-  Trash2, Edit, X, LayoutDashboard, UploadCloud, Loader2
+  Trash2, Edit, X, LayoutDashboard, UploadCloud, Loader2, LogOut
 } from 'lucide-react';
 
 export default function AdminPage() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [session, setSession] = useState<any>(null);
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   
   const [stores, setStores] = useState<any[]>([]);
@@ -18,14 +19,20 @@ export default function AdminPage() {
   const [message, setMessage] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   
-  // State untuk Modal Form
   const [showStoreForm, setShowStoreForm] = useState(false);
   const [showProductForm, setShowProductForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
 
-  // Form States
-  const [storeForm, setStoreForm] = useState({ nama: '', kategori: 'Makanan', deskripsi: '', cover: '', logo: '', jam_buka: 8, jam_tutup: 22 });
+  // Tambahkan whatsapp di state storeForm
+  const [storeForm, setStoreForm] = useState({ nama: '', kategori: 'Makanan', deskripsi: '', cover: '', logo: '', whatsapp: '', jam_buka: 8, jam_tutup: 22 });
   const [productForm, setProductForm] = useState({ store_id: '', nama: '', harga: '', kategori: 'Makanan', deskripsi: '', foto: '' });
+
+  // Cek Sesi Login
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session));
+    return () => subscription.unsubscribe();
+  }, []);
 
   const fetchData = async () => {
     const { data: storesData } = await supabase.from('stores').select('*').order('created_at', { ascending: false });
@@ -35,34 +42,33 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
-    if (isAuthenticated) fetchData();
-  }, [isAuthenticated]);
+    if (session) fetchData();
+  }, [session]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === 'admin123') setIsAuthenticated(true);
-    else alert('Password salah!');
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) alert('Gagal Login: ' + error.message);
   };
 
-  // --- FUNGSI UPLOAD GAMBAR KE SUPABASE ---
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
+
+  // --- FUNGSI UPLOAD GAMBAR ---
   const handleUploadImage = async (e: React.ChangeEvent<HTMLInputElement>, target: 'store_cover' | 'store_logo' | 'product_foto') => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setIsUploading(true);
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${file.name.split('.').pop()}`;
     const { error } = await supabase.storage.from('images').upload(fileName, file);
     
-    if (error) {
-      setMessage('Gagal upload gambar: ' + error.message);
-    } else {
+    if (error) setMessage('Gagal upload: ' + error.message);
+    else {
       const { data } = supabase.storage.from('images').getPublicUrl(fileName);
       if (target === 'store_cover') setStoreForm({...storeForm, cover: data.publicUrl});
       if (target === 'store_logo') setStoreForm({...storeForm, logo: data.publicUrl});
       if (target === 'product_foto') setProductForm({...productForm, foto: data.publicUrl});
-      setMessage('Gambar berhasil di-upload!');
     }
     setIsUploading(false);
   };
@@ -70,32 +76,37 @@ export default function AdminPage() {
   // --- HANDLERS TOKO ---
   const handleSaveStore = async (e: React.FormEvent) => {
     e.preventDefault();
+    const payload = {
+      ...storeForm,
+      slug: storeForm.nama.toLowerCase().replace(/ /g, '-'),
+    };
+    // Pastikan nomor WA diawali 62 (bukan 0 atau +62)
+    if (payload.whatsapp.startsWith('0')) payload.whatsapp = '62' + payload.whatsapp.slice(1);
+    if (payload.whatsapp.startsWith('+62')) payload.whatsapp = payload.whatsapp.slice(1);
+
     let error;
-    
     if (editId) {
-      const res = await supabase.from('stores').update(storeForm).eq('id', editId);
+      const res = await supabase.from('stores').update(payload).eq('id', editId);
       error = res.error;
     } else {
       const res = await supabase.from('stores').insert([{
-        ...storeForm,
-        slug: storeForm.nama.toLowerCase().replace(/ /g, '-'),
-        rating: 5.0, reviews: 0, jarak: 0, eta: '15-20 mnt', ongkir: 5000, min_order: 10000, populer: 0
+        ...payload, rating: 5.0, reviews: 0, jarak: 0, eta: '15-20 mnt', ongkir: 5000, min_order: 10000, populer: 0
       }]);
       error = res.error;
     }
 
     if (error) setMessage('Error: ' + error.message);
     else {
-      setMessage(editId ? 'Toko berhasil diupdate!' : 'Toko berhasil ditambahkan!');
+      setMessage(editId ? 'Toko diupdate!' : 'Toko ditambahkan!');
       setShowStoreForm(false);
       setEditId(null);
-      setStoreForm({ nama: '', kategori: 'Makanan', deskripsi: '', cover: '', logo: '', jam_buka: 8, jam_tutup: 22 });
+      setStoreForm({ nama: '', kategori: 'Makanan', deskripsi: '', cover: '', logo: '', whatsapp: '', jam_buka: 8, jam_tutup: 22 });
       fetchData();
     }
   };
 
   const handleDeleteStore = async (id: string) => {
-    if (!confirm('Yakin ingin menghapus toko ini? Semua menu di dalamnya juga akan terhapus.')) return;
+    if (!confirm('Yakin hapus toko ini?')) return;
     const { error } = await supabase.from('stores').delete().eq('id', id);
     if (error) setMessage('Gagal hapus: ' + error.message);
     else { setMessage('Toko dihapus.'); fetchData(); }
@@ -104,17 +115,11 @@ export default function AdminPage() {
   // --- HANDLERS PRODUK ---
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    let error;
-    
     const payload = {
-      store_id: productForm.store_id,
-      nama: productForm.nama,
-      harga: parseInt(productForm.harga),
-      kategori: productForm.kategori,
-      deskripsi: productForm.deskripsi,
-      foto: productForm.foto
+      store_id: productForm.store_id, nama: productForm.nama, harga: parseInt(productForm.harga),
+      kategori: productForm.kategori, deskripsi: productForm.deskripsi, foto: productForm.foto
     };
-
+    let error;
     if (editId) {
       const res = await supabase.from('products').update(payload).eq('id', editId);
       error = res.error;
@@ -125,7 +130,7 @@ export default function AdminPage() {
 
     if (error) setMessage('Error: ' + error.message);
     else {
-      setMessage(editId ? 'Menu berhasil diupdate!' : 'Menu berhasil ditambahkan!');
+      setMessage(editId ? 'Menu diupdate!' : 'Menu ditambahkan!');
       setShowProductForm(false);
       setEditId(null);
       setProductForm({ store_id: '', nama: '', harga: '', kategori: 'Makanan', deskripsi: '', foto: '' });
@@ -141,12 +146,14 @@ export default function AdminPage() {
   };
 
   // --- LOGIN UI ---
-  if (!isAuthenticated) {
+  if (!session) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
         <form onSubmit={handleLogin} className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-sm">
           <h1 className="text-xl font-bold mb-4 text-center">Admin Login</h1>
-          <input type="password" placeholder="Masukkan Password" value={password} onChange={e => setPassword(e.target.value)}
+          <input type="email" placeholder="Email Admin" value={email} onChange={e => setEmail(e.target.value)} required
+            className="w-full border p-3 rounded-xl mb-3 text-sm focus:outline-emerald-500" />
+          <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required
             className="w-full border p-3 rounded-xl mb-3 text-sm focus:outline-emerald-500" />
           <button type="submit" className="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl hover:bg-emerald-500 transition">Masuk</button>
         </form>
@@ -164,6 +171,9 @@ export default function AdminPage() {
             <Link href="/" className="p-2 bg-white rounded-lg shadow hover:bg-slate-100 transition"><ArrowLeft className="w-5 h-5" /></Link>
             <h1 className="text-xl font-bold flex items-center gap-2"><LayoutDashboard className="w-6 h-6 text-emerald-600"/> Dashboard Admin</h1>
           </div>
+          <button onClick={handleLogout} className="flex items-center gap-2 text-sm font-bold text-red-600 bg-red-50 px-4 py-2 rounded-xl hover:bg-red-100 transition">
+            <LogOut className="w-4 h-4" /> Logout
+          </button>
         </div>
 
         {message && (
@@ -187,7 +197,7 @@ export default function AdminPage() {
         {/* ================= TAB TOKO ================= */}
         {activeTab === 'stores' && (
           <div className="space-y-4">
-            <button onClick={() => { setEditId(null); setStoreForm({ nama: '', kategori: 'Makanan', deskripsi: '', cover: '', logo: '', jam_buka: 8, jam_tutup: 22 }); setShowStoreForm(true); }}
+            <button onClick={() => { setEditId(null); setStoreForm({ nama: '', kategori: 'Makanan', deskripsi: '', cover: '', logo: '', whatsapp: '', jam_buka: 8, jam_tutup: 22 }); setShowStoreForm(true); }}
               className="w-full bg-slate-900 text-white font-bold py-3 rounded-xl hover:bg-slate-800 flex justify-center items-center gap-2 transition">
               <PlusCircle className="w-5 h-5"/> Tambah Toko Baru
             </button>
@@ -204,7 +214,13 @@ export default function AdminPage() {
                     <div><label className="text-xs font-bold">Kategori</label><input required value={storeForm.kategori} onChange={e => setStoreForm({...storeForm, kategori: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="Makanan" /></div>
                     <div><label className="text-xs font-bold">Deskripsi</label><textarea required value={storeForm.deskripsi} onChange={e => setStoreForm({...storeForm, deskripsi: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="Deskripsi..." /></div>
                     
-                    {/* Upload Cover */}
+                    {/* INPUT WHATSAPP */}
+                    <div>
+                      <label className="text-xs font-bold">Nomor WhatsApp Toko (Awali 62)</label>
+                      <input required value={storeForm.whatsapp} onChange={e => setStoreForm({...storeForm, whatsapp: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="Contoh: 6281234567890" />
+                      <p className="text-[10px] text-slate-500 mt-1">*Gunakan angka 62, jangan pakai 0 atau +.</p>
+                    </div>
+
                     <div>
                       <label className="text-xs font-bold block mb-1">Foto Cover (Landscape)</label>
                       {storeForm.cover && <img src={storeForm.cover} className="h-20 w-full object-cover rounded-lg mb-2" alt="Preview" />}
@@ -214,7 +230,6 @@ export default function AdminPage() {
                       </label>
                     </div>
 
-                    {/* Upload Logo */}
                     <div>
                       <label className="text-xs font-bold block mb-1">Foto Logo (Kotak)</label>
                       {storeForm.logo && <img src={storeForm.logo} className="h-16 w-16 object-cover rounded-lg mb-2" alt="Preview" />}
@@ -230,14 +245,11 @@ export default function AdminPage() {
               </div>
             )}
 
+            {/* Tabel Toko (Sama seperti sebelumnya) */}
             <div className="bg-white rounded-2xl shadow-sm border overflow-x-auto">
               <table className="w-full text-left text-sm min-w-[500px]">
                 <thead className="bg-slate-50 border-b">
-                  <tr>
-                    <th className="p-3">Nama Toko</th>
-                    <th className="p-3">Kategori</th>
-                    <th className="p-3 text-right">Aksi</th>
-                  </tr>
+                  <tr><th className="p-3">Nama Toko</th><th className="p-3">Kategori</th><th className="p-3 text-right">Aksi</th></tr>
                 </thead>
                 <tbody>
                   {stores.map(s => (
@@ -248,7 +260,7 @@ export default function AdminPage() {
                       </td>
                       <td className="p-3 text-slate-500">{s.kategori}</td>
                       <td className="p-3 text-right space-x-2">
-                        <button onClick={() => { setEditId(s.id); setStoreForm(s); setShowStoreForm(true); }} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"><Edit className="w-4 h-4"/></button>
+                        <button onClick={() => { setEditId(s.id); setStoreForm({...s, whatsapp: s.whatsapp || ''}); setShowStoreForm(true); }} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"><Edit className="w-4 h-4"/></button>
                         <button onClick={() => handleDeleteStore(s.id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4"/></button>
                       </td>
                     </tr>
@@ -259,82 +271,76 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* ================= TAB PRODUK ================= */}
+        {/* ================= TAB PRODUK (Sama seperti sebelumnya) ================= */}
         {activeTab === 'products' && (
-          <div className="space-y-4">
-            <button onClick={() => { setEditId(null); setProductForm({ store_id: '', nama: '', harga: '', kategori: 'Makanan', deskripsi: '', foto: '' }); setShowProductForm(true); }}
-              className="w-full bg-slate-900 text-white font-bold py-3 rounded-xl hover:bg-slate-800 flex justify-center items-center gap-2 transition">
-              <PlusCircle className="w-5 h-5"/> Tambah Menu Baru
-            </button>
+           <div className="space-y-4">
+           <button onClick={() => { setEditId(null); setProductForm({ store_id: '', nama: '', harga: '', kategori: 'Makanan', deskripsi: '', foto: '' }); setShowProductForm(true); }}
+             className="w-full bg-slate-900 text-white font-bold py-3 rounded-xl hover:bg-slate-800 flex justify-center items-center gap-2 transition">
+             <PlusCircle className="w-5 h-5"/> Tambah Menu Baru
+           </button>
 
-            {showProductForm && (
-              <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
-                <form onSubmit={handleSaveProduct} className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 shadow-2xl">
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="font-bold text-lg">{editId ? 'Edit Menu' : 'Menu Baru'}</h2>
-                    <button type="button" onClick={() => setShowProductForm(false)}><X className="w-5 h-5"/></button>
-                  </div>
-                  <div className="space-y-4 text-sm">
-                    <div>
-                      <label className="text-xs font-bold">Pilih Toko</label>
-                      <select required value={productForm.store_id} onChange={e => setProductForm({...productForm, store_id: e.target.value})} className="w-full border p-2 rounded-lg mt-1">
-                        <option value="">-- Pilih Toko --</option>
-                        {stores.map(s => <option key={s.id} value={s.id}>{s.nama}</option>)}
-                      </select>
-                    </div>
-                    <div><label className="text-xs font-bold">Nama Menu</label><input required value={productForm.nama} onChange={e => setProductForm({...productForm, nama: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="Bakso Urat" /></div>
-                    <div><label className="text-xs font-bold">Harga (Angka)</label><input required type="number" value={productForm.harga} onChange={e => setProductForm({...productForm, harga: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="15000" /></div>
-                    <div><label className="text-xs font-bold">Kategori Menu</label><input required value={productForm.kategori} onChange={e => setProductForm({...productForm, kategori: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="Makanan" /></div>
-                    <div><label className="text-xs font-bold">Deskripsi</label><textarea required value={productForm.deskripsi} onChange={e => setProductForm({...productForm, deskripsi: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="Deskripsi..." /></div>
-                    
-                    {/* Upload Foto Menu */}
-                    <div>
-                      <label className="text-xs font-bold block mb-1">Foto Menu</label>
-                      {productForm.foto && <img src={productForm.foto} className="h-24 w-full object-cover rounded-lg mb-2" alt="Preview" />}
-                      <label className="flex items-center justify-center w-full border-2 border-dashed border-slate-300 p-3 rounded-lg cursor-pointer hover:bg-slate-50 transition">
-                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleUploadImage(e, 'product_foto')} disabled={isUploading} />
-                        {isUploading ? <Loader2 className="w-5 h-5 animate-spin text-slate-500" /> : <span className="text-slate-500 text-xs font-semibold flex items-center gap-2"><UploadCloud className="w-4 h-4"/> Pilih File Foto Menu</span>}
-                      </label>
-                    </div>
+           {showProductForm && (
+             <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
+               <form onSubmit={handleSaveProduct} className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 shadow-2xl">
+                 <div className="flex justify-between items-center mb-4">
+                   <h2 className="font-bold text-lg">{editId ? 'Edit Menu' : 'Menu Baru'}</h2>
+                   <button type="button" onClick={() => setShowProductForm(false)}><X className="w-5 h-5"/></button>
+                 </div>
+                 <div className="space-y-4 text-sm">
+                   <div>
+                     <label className="text-xs font-bold">Pilih Toko</label>
+                     <select required value={productForm.store_id} onChange={e => setProductForm({...productForm, store_id: e.target.value})} className="w-full border p-2 rounded-lg mt-1">
+                       <option value="">-- Pilih Toko --</option>
+                       {stores.map(s => <option key={s.id} value={s.id}>{s.nama}</option>)}
+                     </select>
+                   </div>
+                   <div><label className="text-xs font-bold">Nama Menu</label><input required value={productForm.nama} onChange={e => setProductForm({...productForm, nama: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="Bakso Urat" /></div>
+                   <div><label className="text-xs font-bold">Harga (Angka)</label><input required type="number" value={productForm.harga} onChange={e => setProductForm({...productForm, harga: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="15000" /></div>
+                   <div><label className="text-xs font-bold">Kategori Menu</label><input required value={productForm.kategori} onChange={e => setProductForm({...productForm, kategori: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="Makanan" /></div>
+                   <div><label className="text-xs font-bold">Deskripsi</label><textarea required value={productForm.deskripsi} onChange={e => setProductForm({...productForm, deskripsi: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="Deskripsi..." /></div>
+                   
+                   <div>
+                     <label className="text-xs font-bold block mb-1">Foto Menu</label>
+                     {productForm.foto && <img src={productForm.foto} className="h-24 w-full object-cover rounded-lg mb-2" alt="Preview" />}
+                     <label className="flex items-center justify-center w-full border-2 border-dashed border-slate-300 p-3 rounded-lg cursor-pointer hover:bg-slate-50 transition">
+                       <input type="file" accept="image/*" className="hidden" onChange={(e) => handleUploadImage(e, 'product_foto')} disabled={isUploading} />
+                       {isUploading ? <Loader2 className="w-5 h-5 animate-spin text-slate-500" /> : <span className="text-slate-500 text-xs font-semibold flex items-center gap-2"><UploadCloud className="w-4 h-4"/> Pilih File Foto Menu</span>}
+                     </label>
+                   </div>
 
-                    <button type="submit" disabled={isUploading} className="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl hover:bg-emerald-500 mt-4 disabled:opacity-50">Simpan Menu</button>
-                  </div>
-                </form>
-              </div>
-            )}
+                   <button type="submit" disabled={isUploading} className="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl hover:bg-emerald-500 mt-4 disabled:opacity-50">Simpan Menu</button>
+                 </div>
+               </form>
+             </div>
+           )}
 
-            <div className="bg-white rounded-2xl shadow-sm border overflow-x-auto">
-              <table className="w-full text-left text-sm min-w-[500px]">
-                <thead className="bg-slate-50 border-b">
-                  <tr>
-                    <th className="p-3">Menu</th>
-                    <th className="p-3">Harga</th>
-                    <th className="p-3">Toko</th>
-                    <th className="p-3 text-right">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {products.map(p => {
-                    const toko = stores.find(s => s.id === p.store_id)?.nama || 'Toko Terhapus';
-                    return (
-                      <tr key={p.id} className="border-b last:border-0 hover:bg-slate-50">
-                        <td className="p-3 flex items-center gap-2">
-                          <img src={p.foto || 'https://placehold.co/100x100?text=Foto'} className="w-8 h-8 rounded object-cover bg-slate-200" alt="" />
-                          <span className="font-semibold">{p.nama}</span>
-                        </td>
-                        <td className="p-3 text-emerald-600 font-bold">Rp {p.harga.toLocaleString('id-ID')}</td>
-                        <td className="p-3 text-slate-500">{toko}</td>
-                        <td className="p-3 text-right space-x-2">
-                          <button onClick={() => { setEditId(p.id); setProductForm({...p, harga: p.harga.toString()}); setShowProductForm(true); }} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"><Edit className="w-4 h-4"/></button>
-                          <button onClick={() => handleDeleteProduct(p.id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4"/></button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
+           <div className="bg-white rounded-2xl shadow-sm border overflow-x-auto">
+             <table className="w-full text-left text-sm min-w-[500px]">
+               <thead className="bg-slate-50 border-b">
+                 <tr><th className="p-3">Menu</th><th className="p-3">Harga</th><th className="p-3">Toko</th><th className="p-3 text-right">Aksi</th></tr>
+               </thead>
+               <tbody>
+                 {products.map(p => {
+                   const toko = stores.find(s => s.id === p.store_id)?.nama || 'Toko Terhapus';
+                   return (
+                     <tr key={p.id} className="border-b last:border-0 hover:bg-slate-50">
+                       <td className="p-3 flex items-center gap-2">
+                         <img src={p.foto || 'https://placehold.co/100x100?text=Foto'} className="w-8 h-8 rounded object-cover bg-slate-200" alt="" />
+                         <span className="font-semibold">{p.nama}</span>
+                       </td>
+                       <td className="p-3 text-emerald-600 font-bold">Rp {p.harga.toLocaleString('id-ID')}</td>
+                       <td className="p-3 text-slate-500">{toko}</td>
+                       <td className="p-3 text-right space-x-2">
+                         <button onClick={() => { setEditId(p.id); setProductForm({...p, harga: p.harga.toString()}); setShowProductForm(true); }} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"><Edit className="w-4 h-4"/></button>
+                         <button onClick={() => handleDeleteProduct(p.id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4"/></button>
+                       </td>
+                     </tr>
+                   );
+                 })}
+               </tbody>
+             </table>
+           </div>
+         </div>
         )}
 
       </div>
