@@ -404,10 +404,12 @@ export default function AdminPage() {
                         <div className="flex items-center sm:flex-col sm:items-end justify-between sm:justify-start gap-2 shrink-0">
                           <p className="font-bold text-slate-800 text-sm">Rp {o.total.toLocaleString('id-ID')}</p>
                           <button 
+                                                      <button 
                             onClick={() => handleDeleteOrder(o.id)} 
-                            className="flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 px-2.5 py-1.5 rounded-lg transition"
+                            className="flex items-center gap-1.5 text-xs font-bold text-white bg-red-600 hover:bg-red-700 px-3 py-2 rounded-lg transition shadow-md"
+                            title="Hapus Pesanan Ini"
                           >
-                            <Trash2 className="w-3.5 h-3.5" /> Hapus
+                            <Trash2 className="w-4 h-4" /> HAPUS
                           </button>
                         </div>
 
