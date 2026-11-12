@@ -102,7 +102,7 @@ export default function AdminPage() {
       setMessage(editId ? 'Toko diupdate!' : 'Toko ditambahkan!');
       setShowStoreForm(false);
       setEditId(null);
-      setStoreForm({ nama: '', kategori: 'Makanan', deskripsi: '', cover: '', logo: '', whatsapp: '', jam_buka: 8, jam_tutup: 22 });
+      setStoreForm({ nama: '', kategori: 'Makanan', deskripsi: '', cover: '', logo: '', whatsapp: '', jam_buka: 8, jam_tutup: 22, eta: '15-20 mnt', ongkir: 5000, min_order: 10000, promo: '' });
       fetchData();
     }
   };
