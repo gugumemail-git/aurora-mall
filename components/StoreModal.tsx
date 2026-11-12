@@ -19,29 +19,29 @@ export default function StoreModal({ store, open, onClose, fav, onToggleFav }: P
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-t-3xl sm:rounded-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-slide-up">
         
-        {/* Bagian Cover Modal */}
-        <div className="relative">
-          <div className="relative w-full h-44 bg-slate-100 dark:bg-slate-800">
-            <img 
-              src={store.cover || fallbackCover} 
-              onError={(e) => { e.currentTarget.src = fallbackCover; }} 
-              alt={store.nama} 
-              className="w-full h-full object-cover" 
-            />
-          </div>
-          <button onClick={onClose} className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/90 dark:bg-slate-800/90 backdrop-blur text-slate-700 dark:text-slate-200 flex items-center justify-center shadow-md">
-            <X className="w-4 h-4" />
-          </button>
-          
-          {/* Bagian Logo Modal */}
-          <div className="absolute -bottom-7 left-5 w-14 h-14 rounded-2xl overflow-hidden bg-white border-4 border-white dark:border-slate-900 shadow-lg">
-            <img 
-              src={store.logo || fallbackLogo} 
-              onError={(e) => { e.currentTarget.src = fallbackLogo; }} 
-              alt={store.nama} 
-              className="w-full h-full object-cover" 
-            />
-          </div>
+{/* Bagian Cover Modal */}
+<div className="relative w-full h-44 bg-slate-100 dark:bg-slate-800">
+  {/* GANTI BAGIAN INI */}
+  <img 
+    src={store.cover && store.cover.startsWith('http') ? store.cover : fallbackCover} 
+    onError={(e) => { e.currentTarget.src = fallbackCover; }} 
+    alt={store.nama} 
+    className="w-full h-full object-cover" 
+  />
+</div>
+
+...
+
+{/* Bagian Logo Modal */}
+<div className="absolute -bottom-7 left-5 w-14 h-14 rounded-2xl overflow-hidden bg-white border-4 border-white dark:border-slate-900 shadow-lg">
+  {/* GANTI BAGIAN INI */}
+  <img 
+    src={store.logo && store.logo.startsWith('http') ? store.logo : fallbackLogo} 
+    onError={(e) => { e.currentTarget.src = fallbackLogo; }} 
+    alt={store.nama} 
+    className="w-full h-full object-cover" 
+  />
+</div>
         </div>
 
         <div className="p-5 pt-9 flex-1 overflow-y-auto">
