@@ -358,70 +358,67 @@ export default function AdminPage() {
          </div>
         )}
 
-        {/* ================= TAB PESANAN ================= */}
+            {/* ================= TAB PESANAN ================= */}
         {activeTab === 'orders' && (
           <div className="space-y-4">
-            <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl flex items-center justify-between">
+            <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider mb-1">Total Pendapatan</p>
                 <p className="text-2xl font-black text-emerald-700">Rp {orders.reduce((sum, o) => sum + o.total, 0).toLocaleString('id-ID')}</p>
               </div>
-              <div className="text-right">
+              <div className="sm:text-right">
                 <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider mb-1">Total Pesanan</p>
                 <p className="text-2xl font-black text-emerald-700">{orders.length}</p>
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-sm border overflow-x-auto">
-              <table className="w-full text-left text-sm min-w-[600px]">
-                <thead className="bg-slate-50 border-b">
-                  <tr>
-                    <th className="p-3">Waktu & Pemesan</th>
-                    <th className="p-3">Pesanan</th>
-                    <th className="p-3 text-right">Total</th>
-                    <th className="p-3 text-right">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {orders.length === 0 ? (
-                    <tr><td colSpan={4} className="p-6 text-center text-slate-400">Belum ada pesanan masuk</td></tr>
-                  ) : orders.map(o => {
+            <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
+              {orders.length === 0 ? (
+                <div className="p-8 text-center text-slate-400">Belum ada pesanan masuk</div>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {orders.map(o => {
                     const toko = stores.find(s => s.id === o.store_id)?.nama || 'Toko Terhapus';
                     return (
-                      <tr key={o.id} className="border-b last:border-0 hover:bg-slate-50">
-                        <td className="p-3">
-                          <p className="font-bold text-slate-800">{o.customer_name}</p>
+                      <div key={o.id} className="p-4 hover:bg-slate-50 transition flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                        
+                        {/* Info Pemesan */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-bold text-slate-800">{o.customer_name}</p>
+                            <span className="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded font-semibold">{o.order_type}</span>
+                          </div>
                           <p className="text-[11px] font-semibold text-emerald-600 mb-1">
-                            📱 {o.customer_wa || '-'}
+                            📱 {o.customer_wa ? o.customer_wa : '-'}
                           </p>
-                          <p className="text-[10px] text-slate-500">{new Date(o.created_at).toLocaleString('id-ID')}</p>
-                          <span className="inline-block mt-1 bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded font-semibold">{o.order_type}</span>
-                        </td>
-                        <td className="p-3">
+                          <p className="text-[10px] text-slate-400">{new Date(o.created_at).toLocaleString('id-ID')}</p>
+                        </div>
+
+                        {/* Info Pesanan */}
+                        <div className="flex-1 min-w-0">
                           <p className="text-[11px] font-bold text-emerald-600 mb-1">{toko}</p>
                           {o.items.map((item: any, i: number) => (
                             <p key={i} className="text-[11px] text-slate-600">{item.jumlah}x {item.nama}</p>
                           ))}
                           {o.notes && <p className="text-[10px] text-slate-400 mt-1 italic">"{o.notes}"</p>}
-                        </td>
-                        <td className="p-3 text-right font-bold text-slate-800">
-                          Rp {o.total.toLocaleString('id-ID')}
-                        </td>
-                        <td className="p-3 text-right">
-                          <button onClick={() => handleDeleteOrder(o.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg" title="Hapus Pesanan">
-                            <Trash2 className="w-4 h-4"/>
+                        </div>
+
+                        {/* Total & Tombol Hapus */}
+                        <div className="flex items-center sm:flex-col sm:items-end justify-between sm:justify-start gap-2 shrink-0">
+                          <p className="font-bold text-slate-800 text-sm">Rp {o.total.toLocaleString('id-ID')}</p>
+                          <button 
+                            onClick={() => handleDeleteOrder(o.id)} 
+                            className="flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 px-2.5 py-1.5 rounded-lg transition"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" /> Hapus
                           </button>
-                        </td>
-                      </tr>
+                        </div>
+
+                      </div>
                     );
                   })}
-                </tbody>
-              </table>
+                </div>
+              )}
             </div>
           </div>
         )}
-
-      </div>
-    </div>
-  );
-}
