@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { 
   ArrowLeft, Store, PlusCircle, Utensils, CheckCircle2, 
-  Trash2, Edit, X, LayoutDashboard 
+  Trash2, Edit, X, LayoutDashboard, UploadCloud, Loader2
 } from 'lucide-react';
 
 export default function AdminPage() {
@@ -16,8 +16,9 @@ export default function AdminPage() {
   
   const [activeTab, setActiveTab] = useState<'stores' | 'products'>('stores');
   const [message, setMessage] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
   
-  // State untuk Modal Form (Tambah/Edit)
+  // State untuk Modal Form
   const [showStoreForm, setShowStoreForm] = useState(false);
   const [showProductForm, setShowProductForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -26,7 +27,6 @@ export default function AdminPage() {
   const [storeForm, setStoreForm] = useState({ nama: '', kategori: 'Makanan', deskripsi: '', cover: '', logo: '', jam_buka: 8, jam_tutup: 22 });
   const [productForm, setProductForm] = useState({ store_id: '', nama: '', harga: '', kategori: 'Makanan', deskripsi: '', foto: '' });
 
-  // Fungsi Ambil Data
   const fetchData = async () => {
     const { data: storesData } = await supabase.from('stores').select('*').order('created_at', { ascending: false });
     const { data: productsData } = await supabase.from('products').select('*').order('created_at', { ascending: false });
@@ -44,17 +44,38 @@ export default function AdminPage() {
     else alert('Password salah!');
   };
 
+  // --- FUNGSI UPLOAD GAMBAR KE SUPABASE ---
+  const handleUploadImage = async (e: React.ChangeEvent<HTMLInputElement>, target: 'store_cover' | 'store_logo' | 'product_foto') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+    const { error } = await supabase.storage.from('images').upload(fileName, file);
+    
+    if (error) {
+      setMessage('Gagal upload gambar: ' + error.message);
+    } else {
+      const { data } = supabase.storage.from('images').getPublicUrl(fileName);
+      if (target === 'store_cover') setStoreForm({...storeForm, cover: data.publicUrl});
+      if (target === 'store_logo') setStoreForm({...storeForm, logo: data.publicUrl});
+      if (target === 'product_foto') setProductForm({...productForm, foto: data.publicUrl});
+      setMessage('Gambar berhasil di-upload!');
+    }
+    setIsUploading(false);
+  };
+
   // --- HANDLERS TOKO ---
   const handleSaveStore = async (e: React.FormEvent) => {
     e.preventDefault();
     let error;
     
     if (editId) {
-      // Proses Edit
       const res = await supabase.from('stores').update(storeForm).eq('id', editId);
       error = res.error;
     } else {
-      // Proses Tambah
       const res = await supabase.from('stores').insert([{
         ...storeForm,
         slug: storeForm.nama.toLowerCase().replace(/ /g, '-'),
@@ -85,25 +106,20 @@ export default function AdminPage() {
     e.preventDefault();
     let error;
     
+    const payload = {
+      store_id: productForm.store_id,
+      nama: productForm.nama,
+      harga: parseInt(productForm.harga),
+      kategori: productForm.kategori,
+      deskripsi: productForm.deskripsi,
+      foto: productForm.foto
+    };
+
     if (editId) {
-      const res = await supabase.from('products').update({
-        store_id: productForm.store_id,
-        nama: productForm.nama,
-        harga: parseInt(productForm.harga),
-        kategori: productForm.kategori,
-        deskripsi: productForm.deskripsi,
-        foto: productForm.foto
-      }).eq('id', editId);
+      const res = await supabase.from('products').update(payload).eq('id', editId);
       error = res.error;
     } else {
-      const res = await supabase.from('products').insert([{
-        store_id: productForm.store_id,
-        nama: productForm.nama,
-        harga: parseInt(productForm.harga),
-        kategori: productForm.kategori,
-        deskripsi: productForm.deskripsi,
-        foto: productForm.foto
-      }]);
+      const res = await supabase.from('products').insert([payload]);
       error = res.error;
     }
 
@@ -143,7 +159,6 @@ export default function AdminPage() {
     <div className="min-h-screen bg-slate-50 p-4 pb-20">
       <div className="max-w-4xl mx-auto">
         
-        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <Link href="/" className="p-2 bg-white rounded-lg shadow hover:bg-slate-100 transition"><ArrowLeft className="w-5 h-5" /></Link>
@@ -151,7 +166,6 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Notifikasi */}
         {message && (
           <div className="mb-4 p-3 bg-emerald-100 text-emerald-800 rounded-xl flex items-center justify-between text-sm font-semibold">
             <div className="flex items-center gap-2"><CheckCircle2 className="w-5 h-5" /> {message}</div>
@@ -159,7 +173,6 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* Tab Menu */}
         <div className="flex gap-2 mb-6">
           <button onClick={() => { setActiveTab('stores'); setShowStoreForm(false); }} 
             className={`flex-1 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition ${activeTab === 'stores' ? 'bg-emerald-600 text-white' : 'bg-white text-slate-600 shadow-sm'}`}>
@@ -179,7 +192,6 @@ export default function AdminPage() {
               <PlusCircle className="w-5 h-5"/> Tambah Toko Baru
             </button>
 
-            {/* Form Toko (Modal) */}
             {showStoreForm && (
               <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
                 <form onSubmit={handleSaveStore} className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 shadow-2xl">
@@ -187,21 +199,39 @@ export default function AdminPage() {
                     <h2 className="font-bold text-lg">{editId ? 'Edit Toko' : 'Toko Baru'}</h2>
                     <button type="button" onClick={() => setShowStoreForm(false)}><X className="w-5 h-5"/></button>
                   </div>
-                  <div className="space-y-3 text-sm">
+                  <div className="space-y-4 text-sm">
                     <div><label className="text-xs font-bold">Nama Toko</label><input required value={storeForm.nama} onChange={e => setStoreForm({...storeForm, nama: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="Bakso Pak Kumis" /></div>
                     <div><label className="text-xs font-bold">Kategori</label><input required value={storeForm.kategori} onChange={e => setStoreForm({...storeForm, kategori: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="Makanan" /></div>
                     <div><label className="text-xs font-bold">Deskripsi</label><textarea required value={storeForm.deskripsi} onChange={e => setStoreForm({...storeForm, deskripsi: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="Deskripsi..." /></div>
-                    <div><label className="text-xs font-bold">URL Foto Cover (Landscape)</label><input required value={storeForm.cover} onChange={e => setStoreForm({...storeForm, cover: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="https://..." /></div>
-                    <div><label className="text-xs font-bold">URL Foto Logo (Kotak)</label><input required value={storeForm.logo} onChange={e => setStoreForm({...storeForm, logo: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="https://..." /></div>
-                    <button type="submit" className="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl hover:bg-emerald-500 mt-4">Simpan Toko</button>
+                    
+                    {/* Upload Cover */}
+                    <div>
+                      <label className="text-xs font-bold block mb-1">Foto Cover (Landscape)</label>
+                      {storeForm.cover && <img src={storeForm.cover} className="h-20 w-full object-cover rounded-lg mb-2" alt="Preview" />}
+                      <label className="flex items-center justify-center w-full border-2 border-dashed border-slate-300 p-3 rounded-lg cursor-pointer hover:bg-slate-50 transition">
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleUploadImage(e, 'store_cover')} disabled={isUploading} />
+                        {isUploading ? <Loader2 className="w-5 h-5 animate-spin text-slate-500" /> : <span className="text-slate-500 text-xs font-semibold flex items-center gap-2"><UploadCloud className="w-4 h-4"/> Pilih File Cover</span>}
+                      </label>
+                    </div>
+
+                    {/* Upload Logo */}
+                    <div>
+                      <label className="text-xs font-bold block mb-1">Foto Logo (Kotak)</label>
+                      {storeForm.logo && <img src={storeForm.logo} className="h-16 w-16 object-cover rounded-lg mb-2" alt="Preview" />}
+                      <label className="flex items-center justify-center w-full border-2 border-dashed border-slate-300 p-3 rounded-lg cursor-pointer hover:bg-slate-50 transition">
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleUploadImage(e, 'store_logo')} disabled={isUploading} />
+                        {isUploading ? <Loader2 className="w-5 h-5 animate-spin text-slate-500" /> : <span className="text-slate-500 text-xs font-semibold flex items-center gap-2"><UploadCloud className="w-4 h-4"/> Pilih File Logo</span>}
+                      </label>
+                    </div>
+
+                    <button type="submit" disabled={isUploading} className="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl hover:bg-emerald-500 mt-4 disabled:opacity-50">Simpan Toko</button>
                   </div>
                 </form>
               </div>
             )}
 
-            {/* List Toko */}
-            <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
-              <table className="w-full text-left text-sm">
+            <div className="bg-white rounded-2xl shadow-sm border overflow-x-auto">
+              <table className="w-full text-left text-sm min-w-[500px]">
                 <thead className="bg-slate-50 border-b">
                   <tr>
                     <th className="p-3">Nama Toko</th>
@@ -213,7 +243,7 @@ export default function AdminPage() {
                   {stores.map(s => (
                     <tr key={s.id} className="border-b last:border-0 hover:bg-slate-50">
                       <td className="p-3 flex items-center gap-2">
-                        <img src={s.logo} className="w-8 h-8 rounded object-cover" alt="" />
+                        <img src={s.logo || 'https://placehold.co/100x100?text=L'} className="w-8 h-8 rounded object-cover bg-slate-200" alt="" />
                         <span className="font-semibold">{s.nama}</span>
                       </td>
                       <td className="p-3 text-slate-500">{s.kategori}</td>
@@ -237,7 +267,6 @@ export default function AdminPage() {
               <PlusCircle className="w-5 h-5"/> Tambah Menu Baru
             </button>
 
-            {/* Form Produk (Modal) */}
             {showProductForm && (
               <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
                 <form onSubmit={handleSaveProduct} className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 shadow-2xl">
@@ -245,7 +274,7 @@ export default function AdminPage() {
                     <h2 className="font-bold text-lg">{editId ? 'Edit Menu' : 'Menu Baru'}</h2>
                     <button type="button" onClick={() => setShowProductForm(false)}><X className="w-5 h-5"/></button>
                   </div>
-                  <div className="space-y-3 text-sm">
+                  <div className="space-y-4 text-sm">
                     <div>
                       <label className="text-xs font-bold">Pilih Toko</label>
                       <select required value={productForm.store_id} onChange={e => setProductForm({...productForm, store_id: e.target.value})} className="w-full border p-2 rounded-lg mt-1">
@@ -257,16 +286,25 @@ export default function AdminPage() {
                     <div><label className="text-xs font-bold">Harga (Angka)</label><input required type="number" value={productForm.harga} onChange={e => setProductForm({...productForm, harga: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="15000" /></div>
                     <div><label className="text-xs font-bold">Kategori Menu</label><input required value={productForm.kategori} onChange={e => setProductForm({...productForm, kategori: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="Makanan" /></div>
                     <div><label className="text-xs font-bold">Deskripsi</label><textarea required value={productForm.deskripsi} onChange={e => setProductForm({...productForm, deskripsi: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="Deskripsi..." /></div>
-                    <div><label className="text-xs font-bold">URL Foto Menu</label><input required value={productForm.foto} onChange={e => setProductForm({...productForm, foto: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="https://..." /></div>
-                    <button type="submit" className="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl hover:bg-emerald-500 mt-4">Simpan Menu</button>
+                    
+                    {/* Upload Foto Menu */}
+                    <div>
+                      <label className="text-xs font-bold block mb-1">Foto Menu</label>
+                      {productForm.foto && <img src={productForm.foto} className="h-24 w-full object-cover rounded-lg mb-2" alt="Preview" />}
+                      <label className="flex items-center justify-center w-full border-2 border-dashed border-slate-300 p-3 rounded-lg cursor-pointer hover:bg-slate-50 transition">
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleUploadImage(e, 'product_foto')} disabled={isUploading} />
+                        {isUploading ? <Loader2 className="w-5 h-5 animate-spin text-slate-500" /> : <span className="text-slate-500 text-xs font-semibold flex items-center gap-2"><UploadCloud className="w-4 h-4"/> Pilih File Foto Menu</span>}
+                      </label>
+                    </div>
+
+                    <button type="submit" disabled={isUploading} className="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl hover:bg-emerald-500 mt-4 disabled:opacity-50">Simpan Menu</button>
                   </div>
                 </form>
               </div>
             )}
 
-            {/* List Menu */}
-            <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
-              <table className="w-full text-left text-sm">
+            <div className="bg-white rounded-2xl shadow-sm border overflow-x-auto">
+              <table className="w-full text-left text-sm min-w-[500px]">
                 <thead className="bg-slate-50 border-b">
                   <tr>
                     <th className="p-3">Menu</th>
@@ -281,7 +319,7 @@ export default function AdminPage() {
                     return (
                       <tr key={p.id} className="border-b last:border-0 hover:bg-slate-50">
                         <td className="p-3 flex items-center gap-2">
-                          <img src={p.foto} className="w-8 h-8 rounded object-cover" alt="" />
+                          <img src={p.foto || 'https://placehold.co/100x100?text=Foto'} className="w-8 h-8 rounded object-cover bg-slate-200" alt="" />
                           <span className="font-semibold">{p.nama}</span>
                         </td>
                         <td className="p-3 text-emerald-600 font-bold">Rp {p.harga.toLocaleString('id-ID')}</td>
