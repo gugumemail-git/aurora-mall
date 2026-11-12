@@ -54,6 +54,7 @@ export default function HomePage() {
           deskripsi: d.deskripsi,
           cover: d.cover,
           logo: d.logo,
+          whatsapp: d.whatsapp || '', // <--- INI TAMBAHANNYA
           rating: d.rating,
           reviews: d.reviews,
           jarak: d.jarak,
