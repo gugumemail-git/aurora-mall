@@ -77,7 +77,6 @@ export default function AdminPage() {
       slug: storeForm.nama.toLowerCase().replace(/ /g, '-'),
     };
     
-    // Otomatis ubah 08xx menjadi 628xx
     if (payload.whatsapp.startsWith('0')) payload.whatsapp = '62' + payload.whatsapp.slice(1);
     if (payload.whatsapp.startsWith('+62')) payload.whatsapp = payload.whatsapp.slice(1);
 
@@ -227,11 +226,6 @@ export default function AdminPage() {
                     </div>
 
                     <div>
-                    <div>
-                      <label className="text-xs font-bold text-emerald-700">Nomor WhatsApp Toko</label>
-                      <input required value={storeForm.whatsapp} onChange={e => setStoreForm({...storeForm, whatsapp: e.target.value})} className="w-full border p-2 rounded-lg mt-1 border-emerald-300" placeholder="Contoh: 08123456789" />
-                      <p className="text-[10px] text-slate-500 mt-1">*Ketik nomor WA aktif toko ini.</p>
-                    </div>
                       <label className="text-xs font-bold block mb-1">Foto Cover (Landscape)</label>
                       {storeForm.cover && <img src={storeForm.cover} className="h-20 w-full object-cover rounded-lg mb-2" alt="Preview" />}
                       <label className="flex items-center justify-center w-full border-2 border-dashed border-slate-300 p-3 rounded-lg cursor-pointer hover:bg-slate-50 transition">
