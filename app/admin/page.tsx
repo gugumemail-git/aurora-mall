@@ -23,7 +23,6 @@ export default function AdminPage() {
   const [showProductForm, setShowProductForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
 
-  // Pastikan whatsapp ada di dalam state
   const [storeForm, setStoreForm] = useState({ nama: '', kategori: 'Makanan', deskripsi: '', cover: '', logo: '', whatsapp: '', jam_buka: 8, jam_tutup: 22 });
   const [productForm, setProductForm] = useState({ store_id: '', nama: '', harga: '', kategori: 'Makanan', deskripsi: '', foto: '' });
 
@@ -63,7 +62,7 @@ export default function AdminPage() {
     
     if (error) setMessage('Gagal upload: ' + error.message);
     else {
-      const { data } = supabase.storage.from('images').getPublicUrl(fileName);
+      const { data } = await supabase.storage.from('images').getPublicUrl(fileName);
       if (target === 'store_cover') setStoreForm({...storeForm, cover: data.publicUrl});
       if (target === 'store_logo') setStoreForm({...storeForm, logo: data.publicUrl});
       if (target === 'product_foto') setProductForm({...productForm, foto: data.publicUrl});
@@ -204,7 +203,6 @@ export default function AdminPage() {
                     <button type="button" onClick={() => setShowStoreForm(false)}><X className="w-5 h-5"/></button>
                   </div>
                   
-                  {/* FORM INPUT */}
                   <div className="space-y-4 text-sm">
                     <div>
                       <label className="text-xs font-bold">Nama Toko</label>
@@ -221,21 +219,14 @@ export default function AdminPage() {
                       <textarea required value={storeForm.deskripsi} onChange={e => setStoreForm({...storeForm, deskripsi: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="Deskripsi..." />
                     </div>
 
-                    {/* KOLOM WHATSAPP - SUDAH DI DALAM FORM */}
-                    <div>
-                      <label className="text-xs font-bold text-emerald-700">Nomor WhatsApp Toko</label>
-                      <input required value={storeForm.whatsapp} onChange={e => setStoreForm({...storeForm, whatsapp: e.target.value})} className="w-full border p-2 rounded-lg mt-1 border-emerald-300" placeholder="Contoh: 08123456789 atau 628123456789" />
-                      <p className="text-[10px] text-slate-500 mt-1">*Ketik nomor WA aktif toko ini.</p>
-                    </div>
-
-                    <div>
-                                            {/* KOLOM WHATSAPP */}
+                    {/* KOLOM WHATSAPP */}
                     <div>
                       <label className="text-xs font-bold text-emerald-700">Nomor WhatsApp Toko</label>
                       <input required value={storeForm.whatsapp} onChange={e => setStoreForm({...storeForm, whatsapp: e.target.value})} className="w-full border p-2 rounded-lg mt-1 border-emerald-300" placeholder="Contoh: 08123456789" />
                       <p className="text-[10px] text-slate-500 mt-1">*Ketik nomor WA aktif toko ini.</p>
                     </div>
 
+                    <div>
                       <label className="text-xs font-bold block mb-1">Foto Cover (Landscape)</label>
                       {storeForm.cover && <img src={storeForm.cover} className="h-20 w-full object-cover rounded-lg mb-2" alt="Preview" />}
                       <label className="flex items-center justify-center w-full border-2 border-dashed border-slate-300 p-3 rounded-lg cursor-pointer hover:bg-slate-50 transition">
