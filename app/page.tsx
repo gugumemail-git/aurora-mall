@@ -121,7 +121,7 @@ export default function HomePage() {
             <div>
               <h1 className="font-bold text-slate-900 dark:text-white text-base leading-tight">Aurora Mall</h1>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                <MapPin className="w-3 h-3" /> Jakarta Selatan
+                <MapPin className="w-3 h-3" /> Bekasi
               </p>
             </div>
           </div>
