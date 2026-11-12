@@ -162,7 +162,7 @@ export default function AdminPage() {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <Link href="/" className="p-2 bg-white rounded-lg shadow hover:bg-slate-100 transition"><ArrowLeft className="w-5 h-5" /></Link>
-            <h1 className="text-xl font-bold flex items-center gap-2"><LayoutDashboard className="w-6 h-6 text-emerald-600"/> Dashboard Admin</h1>
+            <h1 className="text-xl font-bold flex items-center gap-2"><LayoutDashboard className="w-6 h-6 text-emerald-600"/> Dashboard Admin Baru 2026</h1>
           </div>
           <button onClick={handleLogout} className="flex items-center gap-2 text-sm font-bold text-red-600 bg-red-50 px-4 py-2 rounded-xl hover:bg-red-100 transition">
             <LogOut className="w-4 h-4" /> Logout
