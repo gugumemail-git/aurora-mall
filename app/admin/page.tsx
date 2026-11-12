@@ -24,7 +24,6 @@ export default function AdminPage() {
   const [showProductForm, setShowProductForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
 
-  // STATE LENGKAP (Termasuk Rating, Ulasan, Jarak)
   const [storeForm, setStoreForm] = useState({ 
     nama: '', kategori: 'Makanan', deskripsi: '', cover: '', logo: '', whatsapp: '', 
     jam_buka: 8, jam_tutup: 22, eta: '15-20 mnt', ongkir: 5000, min_order: 10000, promo: '',
@@ -103,7 +102,6 @@ export default function AdminPage() {
       setMessage(editId ? 'Toko diupdate!' : 'Toko ditambahkan!');
       setShowStoreForm(false);
       setEditId(null);
-      // Reset form lengkap
       setStoreForm({ 
         nama: '', kategori: 'Makanan', deskripsi: '', cover: '', logo: '', whatsapp: '', 
         jam_buka: 8, jam_tutup: 22, eta: '15-20 mnt', ongkir: 5000, min_order: 10000, promo: '',
@@ -158,7 +156,8 @@ export default function AdminPage() {
     if (error) setMessage('Gagal hapus pesanan: ' + error.message);
     else { setMessage('Pesanan berhasil dihapus.'); fetchData(); }
   };
-    if (!session) {
+
+  if (!session) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
         <form onSubmit={handleLogin} className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-sm">
@@ -248,7 +247,6 @@ export default function AdminPage() {
                       <input required value={storeForm.whatsapp} onChange={e => setStoreForm({...storeForm, whatsapp: e.target.value})} className="w-full border p-2 rounded-lg mt-1 border-emerald-300" />
                     </div>
 
-                    {/* FORM RATING DLL */}
                     <div className="grid grid-cols-3 gap-2">
                       <div>
                         <label className="text-xs font-bold">Rating (1-5)</label>
@@ -264,7 +262,6 @@ export default function AdminPage() {
                       </div>
                     </div>
 
-                    {/* FORM DETAIL TOKO LAINNYA */}
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <label className="text-xs font-bold">Jam Buka</label>
@@ -315,7 +312,8 @@ export default function AdminPage() {
                 </form>
               </div>
             )}
-                        <div className="bg-white rounded-2xl shadow-sm border overflow-x-auto">
+
+            <div className="bg-white rounded-2xl shadow-sm border overflow-x-auto">
               <table className="w-full text-left text-sm min-w-[500px]">
                 <thead className="bg-slate-50 border-b">
                   <tr><th className="p-3">Nama Toko</th><th className="p-3">Kategori</th><th className="p-3 text-right">Aksi</th></tr>
@@ -417,14 +415,22 @@ export default function AdminPage() {
         {/* ================= TAB PESANAN ================= */}
         {activeTab === 'orders' && (
           <div className="space-y-4">
-            <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider mb-1">Total Pendapatan</p>
-                <p className="text-2xl font-black text-emerald-700">Rp {orders.reduce((sum, o) => sum + o.total, 0).toLocaleString('id-ID')}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl">
+                <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider mb-1">Omzet Toko</p>
+                <p className="text-xl font-black text-emerald-700">
+                  Rp {orders.reduce((sum, o) => sum + (o.subtotal || 0), 0).toLocaleString('id-ID')}
+                </p>
               </div>
-              <div className="sm:text-right">
-                <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider mb-1">Total Pesanan</p>
-                <p className="text-2xl font-black text-emerald-700">{orders.length}</p>
+              <div className="bg-blue-50 border border-blue-200 p-4 rounded-2xl">
+                <p className="text-xs font-bold text-blue-800 uppercase tracking-wider mb-1">Pendapatan Aplikasi (Fee)</p>
+                <p className="text-xl font-black text-blue-700">
+                  Rp {orders.reduce((sum, o) => sum + (o.tax || 0), 0).toLocaleString('id-ID')}
+                </p>
+              </div>
+              <div className="bg-slate-100 border border-slate-200 p-4 rounded-2xl">
+                <p className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-1">Total Transaksi</p>
+                <p className="text-xl font-black text-slate-700">{orders.length}</p>
               </div>
             </div>
 
@@ -455,6 +461,11 @@ export default function AdminPage() {
                             <p key={i} className="text-[11px] text-slate-600">{item.jumlah}x {item.nama}</p>
                           ))}
                           {o.notes && <p className="text-[10px] text-slate-400 mt-1 italic">"{o.notes}"</p>}
+                          
+                          <p className="text-[10px] text-slate-500 mt-2 border-t border-slate-100 pt-1">
+                            Subtotal: Rp {(o.subtotal || 0).toLocaleString('id-ID')} <br/>
+                            Fee App: Rp {(o.tax || 0).toLocaleString('id-ID')}
+                          </p>
                         </div>
 
                         <div className="flex items-center sm:flex-col sm:items-end justify-between sm:justify-start gap-2 shrink-0">

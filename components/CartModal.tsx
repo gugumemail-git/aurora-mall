@@ -8,7 +8,7 @@ import type { Store } from '@/lib/types';
 import { rp } from '@/lib/format';
 import { supabase } from '@/lib/supabase'; // <-- Import Supabase
 
-const TAX = 5;
+const SERVICE_FEE = 1000; // Biaya layanan Aurora Mall
 
 type Props = { open: boolean; onClose: () => void; store: Store };
 
@@ -23,8 +23,8 @@ export default function CartModal({ open, onClose, store }: Props) {
 
   const storeItems = useMemo(() => items.filter(i => i.storeId === store.id), [items, store.id]);
   const storeSubtotal = storeItems.reduce((s, i) => s + i.harga * i.jumlah, 0);
-  const storeTax = Math.round(storeSubtotal * TAX / 100);
-  const storeTotal = storeSubtotal + storeTax;
+  const storeServiceFee = storeItems.length > 0 ? SERVICE_FEE : 0;
+  const storeTotal = storeSubtotal + storeServiceFee;
 
   if (!open) return null;
 
@@ -37,15 +37,15 @@ export default function CartModal({ open, onClose, store }: Props) {
     setIsLoading(true);
 
     // 1. SIMPAN KE DATABASE SUPABASE (Termasuk No WA)
-    const { error: dbError } = await supabase.from('orders').insert([{
+        const { error: dbError } = await supabase.from('orders').insert([{
       store_id: store.id,
       customer_name: name,
-      customer_wa: customerWa, // <-- Menyimpan WA Pembeli
+      customer_wa: customerWa,
       order_type: orderType,
       notes: notes,
       items: storeItems,
       subtotal: storeSubtotal,
-      tax: storeTax,
+      tax: storeServiceFee, // Kita simpan biaya layanan di kolom tax
       total: storeTotal
     }]);
 
@@ -67,7 +67,7 @@ export default function CartModal({ open, onClose, store }: Props) {
     });
     text += `\n──────────────────\n`;
     text += `Subtotal: ${rp(storeSubtotal)}\n`;
-    text += `Pajak (${TAX}%): ${rp(storeTax)}\n`;
+    text += `Biaya Layanan: ${rp(storeServiceFee)}\n`; // <-- Ganti teks pajak
     text += `*TOTAL BAYAR: ${rp(storeTotal)}*\n`;
     text += `──────────────────\n`;
     text += `_Mohon segera diproses. Terima kasih!_`;
@@ -152,9 +152,10 @@ export default function CartModal({ open, onClose, store }: Props) {
               className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 focus:outline-none focus:border-emerald-500" />
           </div>
 
-          <div className="space-y-1.5 pt-2 border-t border-slate-200 dark:border-slate-700 text-xs">
+                    <div className="space-y-1.5 pt-2 border-t border-slate-200 dark:border-slate-700 text-xs">
             <div className="flex justify-between text-slate-500 dark:text-slate-400"><span>Subtotal</span><span>{rp(storeSubtotal)}</span></div>
-            <div className="flex justify-between text-slate-500 dark:text-slate-400"><span>Pajak ({TAX}%)</span><span>{rp(storeTax)}</span></div>
+            {/* GANTI BAGIAN PAJAK INI */}
+            <div className="flex justify-between text-slate-500 dark:text-slate-400"><span>Biaya Layanan</span><span>{rp(storeServiceFee)}</span></div>
             <div className="flex justify-between font-bold text-slate-800 dark:text-white text-sm pt-1"><span>Total Bayar</span><span className="text-emerald-600 dark:text-emerald-400">{rp(storeTotal)}</span></div>
           </div>
 
