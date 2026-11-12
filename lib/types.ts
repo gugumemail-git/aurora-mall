@@ -6,6 +6,7 @@ export type Store = {
   deskripsi: string;
   cover: string;
   logo: string;
+  whatsapp: string; // <-- TAMBAHKAN BARIS INI
   rating: number;
   reviews: number;
   jarak: number;
