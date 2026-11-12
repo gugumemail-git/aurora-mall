@@ -1,4 +1,61 @@
-import type { Store, Product } from './types';
+'use client';
+import { useMemo, useState, useEffect } from 'react';
+import { Search, Sparkles, Flame, Heart, MapPin } from 'lucide-react';
+import { isOpen } from '@/lib/store';
+import StoreCard from '@/components/StoreCard';
+import StoreModal from '@/components/StoreModal';
+import ThemeToggle from '@/components/ThemeToggle';
+import { supabase } from '@/lib/supabase';
+import type { Store } from '@/lib/types';
+
+// ... (FILTERS dan QUICK tetap sama) ...
+
+export default function HomePage() {
+  const [stores, setStores] = useState<Store[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // ... (state search, category, dll tetap sama) ...
+
+  useEffect(() => {
+    async function fetchStores() {
+      const { data, error } = await supabase.from('stores').select('*');
+      if (!error && data) {
+        // Konversi format dari database ke format TypeScript kita
+        const formatted = data.map((d: any) => ({
+          id: d.id,
+          slug: d.slug,
+          nama: d.nama,
+          kategori: d.kategori,
+          deskripsi: d.deskripsi,
+          cover: d.cover,
+          logo: d.logo,
+          rating: d.rating,
+          reviews: d.reviews,
+          jarak: d.jarak,
+          eta: d.eta,
+          ongkir: d.ongkir,
+          minOrder: d.min_order,
+          jam: { buka: d.jam_buka, tutup: d.jam_tutup },
+          promo: d.promo,
+          populer: d.populer
+        }));
+        setStores(formatted);
+      }
+      setLoading(false);
+    }
+    fetchStores();
+  }, []);
+
+  // GANTI SEMUA VARIABEL "STORES" DI DALAM FUNGSI INI MENJADI "stores"
+  const categories = useMemo(() => ['all', ...new Set(stores.map(s => s.kategori))], [stores]);
+  
+  const filtered = useMemo(() => {
+    let list = [...stores];
+    // ... (logika filter tetap sama) ...
+  }, [category, filter, search, sort, favOnly, favs, stores]);
+
+  const promos = stores.filter(s => s.promo);
+  // ... (sisa kodingan return tetap sama) ...
 
 export const STORES: Store[] = [
   {

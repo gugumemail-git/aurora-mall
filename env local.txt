@@ -1,0 +1,2 @@
+NEXT_PUBLIC_SUPABASE_URL=masukkan_project_url_anda
+NEXT_PUBLIC_SUPABASE_ANON_KEY=masukkan_anon_key_anda

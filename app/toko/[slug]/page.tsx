@@ -1,17 +1,55 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams, notFound } from 'next/navigation';
-import Image from 'next/image';
-import Link from 'next/link';
-import { ArrowLeft, ShoppingBag, Search, Star, MapPin, Clock } from 'lucide-react';
-import { getStoreBySlug, getProductsByStore } from '@/lib/data';
-import { isOpen } from '@/lib/store';
-import { rp } from '@/lib/format';
-import { CartProvider, useCart } from '@/context/CartContext';
-import ProductCard from '@/components/ProductCard';
-import CartModal from '@/components/CartModal';
-import FloatingCart from '@/components/FloatingCart';
-import ThemeToggle from '@/components/ThemeToggle';
+// ... (import lainnya tetap sama)
+import { supabase } from '@/lib/supabase';
+import type { Store, Product } from '@/lib/types';
+
+export default function StorePage() {
+  const params = useParams();
+  const slug = typeof params.slug === 'string' ? params.slug : '';
+  
+  const [store, setStore] = useState<Store | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchData() {
+      // 1. Ambil data toko
+      const { data: storeData } = await supabase.from('stores').select('*').eq('slug', slug).single();
+      
+      if (storeData) {
+        const formattedStore = {
+          ...storeData,
+          minOrder: storeData.min_order,
+          jam: { buka: storeData.jam_buka, tutup: storeData.jam_tutup }
+        };
+        setStore(formattedStore as Store);
+
+        // 2. Ambil data produk berdasarkan ID toko
+        const { data: productData } = await supabase.from('products').select('*').eq('store_id', storeData.id);
+        if (productData) {
+          const formattedProducts = productData.map((p: any) => ({
+            ...p,
+            storeId: p.store_id
+          }));
+          setProducts(formattedProducts as Product[]);
+        }
+      }
+      setLoading(false);
+    }
+    fetchData();
+  }, [slug]);
+
+  if (loading) return <div className="text-center py-20 text-xs">Memuat data toko...</div>;
+  if (!store) return notFound();
+
+  return (
+    <CartProvider>
+      <StoreView store={store} products={products} />
+    </CartProvider>
+  );
+}
 
 export default function StorePage() {
   const params = useParams();
