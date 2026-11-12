@@ -221,13 +221,6 @@ export default function AdminPage() {
                       <textarea required value={storeForm.deskripsi} onChange={e => setStoreForm({...storeForm, deskripsi: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="Deskripsi..." />
                     </div>
 
-                    {/* KOLOM WHATSAPP */}
-                    <div>
-                      <label className="text-xs font-bold text-emerald-700">Nomor WhatsApp Toko</label>
-                      <input required value={storeForm.whatsapp} onChange={e => setStoreForm({...storeForm, whatsapp: e.target.value})} className="w-full border p-2 rounded-lg mt-1 border-emerald-300" placeholder="Contoh: 08123456789 atau 628123456789" />
-                      <p className="text-[10px] text-slate-500 mt-1">*Ketik nomor WA aktif toko ini.</p>
-                    </div>
-
                     <div>
                       <label className="text-xs font-bold block mb-1">Foto Cover (Landscape)</label>
                       {storeForm.cover && <img src={storeForm.cover} className="h-20 w-full object-cover rounded-lg mb-2" alt="Preview" />}
@@ -274,6 +267,12 @@ export default function AdminPage() {
                 </tbody>
               </table>
             </div>
+                    {/* KOLOM WHATSAPP */}
+                    <div>
+                      <label className="text-xs font-bold text-emerald-700">Nomor WhatsApp Toko</label>
+                      <input required value={storeForm.whatsapp} onChange={e => setStoreForm({...storeForm, whatsapp: e.target.value})} className="w-full border p-2 rounded-lg mt-1 border-emerald-300" placeholder="Contoh: 08123456789 atau 628123456789" />
+                      <p className="text-[10px] text-slate-500 mt-1">*Ketik nomor WA aktif toko ini.</p>
+                    </div>
           </div>
         )}
 
