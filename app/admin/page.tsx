@@ -375,6 +375,10 @@ export default function AdminPage() {
                       <tr key={o.id} className="border-b last:border-0 hover:bg-slate-50">
                         <td className="p-3">
                           <p className="font-bold text-slate-800">{o.customer_name}</p>
+                          {/* TAMBAHKAN BARIS INI UNTUK MENAMPILKAN WA */}
+                          <p className="text-[11px] font-semibold text-emerald-600 mb-1">
+                            📱 {o.customer_wa || '-'}
+                          </p>
                           <p className="text-[10px] text-slate-500">{new Date(o.created_at).toLocaleString('id-ID')}</p>
                           <span className="inline-block mt-1 bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded font-semibold">{o.order_type}</span>
                         </td>

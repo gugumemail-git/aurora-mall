@@ -17,6 +17,7 @@ export default function CartModal({ open, onClose, store }: Props) {
   const { show } = useToast();
   const [name, setName] = useState('');
   const [notes, setNotes] = useState('');
+  const [customerWa, setCustomerWa] = useState('');
   const [orderType, setOrderType] = useState<'Dine-in' | 'Takeaway' | 'Delivery'>('Dine-in');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -30,14 +31,16 @@ export default function CartModal({ open, onClose, store }: Props) {
   // Ini fungsi yang kita perbarui
   const sendWhatsAppOrder = async () => {
     if (!name.trim()) { show('Mohon isi nama pemesan', 'error'); return; }
+    if (!customerWa.trim()) { show('Mohon isi nomor WhatsApp', 'error'); return; } // Validasi WA
     if (storeItems.length === 0) { show('Keranjang kosong', 'error'); return; }
 
     setIsLoading(true);
 
-    // 1. SIMPAN KE DATABASE SUPABASE
+    // 1. SIMPAN KE DATABASE SUPABASE (Termasuk No WA)
     const { error: dbError } = await supabase.from('orders').insert([{
       store_id: store.id,
       customer_name: name,
+      customer_wa: customerWa, // <-- Menyimpan WA Pembeli
       order_type: orderType,
       notes: notes,
       items: storeItems,
@@ -55,6 +58,7 @@ export default function CartModal({ open, onClose, store }: Props) {
     let text = `*PESANAN BARU - ${store.nama}*\n`;
     text += `──────────────────\n`;
     text += `👤 Nama: ${name}\n`;
+    text += `📱 WA Pemesan: ${customerWa}\n`; // <-- Tampilkan juga di pesan WA
     text += `🍽️ Tipe: ${orderType}\n`;
     text += `📝 Catatan: ${notes || '-'}\n`;
     text += `──────────────────\n\n*RINCIAN:*\n`;
@@ -68,13 +72,12 @@ export default function CartModal({ open, onClose, store }: Props) {
     text += `──────────────────\n`;
     text += `_Mohon segera diproses. Terima kasih!_`;
 
-    // Gunakan nomor WA dari data toko. Jika kosong, pakai nomor default.
     const targetWA = store.whatsapp || '628192003025'; 
     window.open(`https://wa.me/${targetWA}?text=${encodeURIComponent(text)}`, '_blank');
     
     show('Pesanan disimpan & membuka WhatsApp...', 'success');
     setIsLoading(false);
-    clear(); // Opsional: Kosongkan keranjang setelah checkout
+    clear(); 
     onClose();
   };
 
@@ -139,7 +142,12 @@ export default function CartModal({ open, onClose, store }: Props) {
               className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 focus:outline-none focus:border-emerald-500" />
           </div>
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">Catatan / No. Meja</label>
+            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">Nomor WhatsApp Pemesan *</label>
+            <input required value={customerWa} onChange={e => setCustomerWa(e.target.value)} placeholder="Contoh: 08123456789"
+              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 focus:outline-none focus:border-emerald-500" />
+          </div>
+          <div>
+            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">Alamat / No. Ruangan / No. Meja / Catatan</label>
             <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Contoh: Meja 04 / Es dibanyakin"
               className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 focus:outline-none focus:border-emerald-500" />
           </div>
