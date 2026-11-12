@@ -24,10 +24,11 @@ export default function AdminPage() {
   const [showProductForm, setShowProductForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
 
+  // STATE LENGKAP (Termasuk Rating, Ulasan, Jarak)
   const [storeForm, setStoreForm] = useState({ 
     nama: '', kategori: 'Makanan', deskripsi: '', cover: '', logo: '', whatsapp: '', 
-    jam_buka: 8, jam_tutup: 22,
-    eta: '15-20 mnt', ongkir: 5000, min_order: 10000, promo: '' // <-- Tambahan Baru
+    jam_buka: 8, jam_tutup: 22, eta: '15-20 mnt', ongkir: 5000, min_order: 10000, promo: '',
+    rating: 5.0, reviews: 0, jarak: 0 
   });
   const [productForm, setProductForm] = useState({ store_id: '', nama: '', harga: '', kategori: 'Makanan', deskripsi: '', foto: '' });
 
@@ -92,7 +93,7 @@ export default function AdminPage() {
       error = res.error;
     } else {
       const res = await supabase.from('stores').insert([{
-        ...payload, rating: 5.0, reviews: 0, jarak: 0, eta: '15-20 mnt', ongkir: 5000, min_order: 10000, populer: 0
+        ...payload, populer: 0
       }]);
       error = res.error;
     }
@@ -102,7 +103,12 @@ export default function AdminPage() {
       setMessage(editId ? 'Toko diupdate!' : 'Toko ditambahkan!');
       setShowStoreForm(false);
       setEditId(null);
-      setStoreForm({ nama: '', kategori: 'Makanan', deskripsi: '', cover: '', logo: '', whatsapp: '', jam_buka: 8, jam_tutup: 22, eta: '15-20 mnt', ongkir: 5000, min_order: 10000, promo: '' });
+      // Reset form lengkap
+      setStoreForm({ 
+        nama: '', kategori: 'Makanan', deskripsi: '', cover: '', logo: '', whatsapp: '', 
+        jam_buka: 8, jam_tutup: 22, eta: '15-20 mnt', ongkir: 5000, min_order: 10000, promo: '',
+        rating: 5.0, reviews: 0, jarak: 0 
+      });
       fetchData();
     }
   };
@@ -146,20 +152,13 @@ export default function AdminPage() {
     else { setMessage('Menu dihapus.'); fetchData(); }
   };
 
-  // FUNGSI HAPUS PESANAN
   const handleDeleteOrder = async (id: string) => {
     if (!confirm('Yakin ingin menghapus pesanan ini? Data yang dihapus tidak bisa dikembalikan.')) return;
-    
     const { error } = await supabase.from('orders').delete().eq('id', id);
-    if (error) {
-      setMessage('Gagal hapus pesanan: ' + error.message);
-    } else {
-      setMessage('Pesanan berhasil dihapus.');
-      fetchData();
-    }
+    if (error) setMessage('Gagal hapus pesanan: ' + error.message);
+    else { setMessage('Pesanan berhasil dihapus.'); fetchData(); }
   };
-
-  if (!session) {
+    if (!session) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
         <form onSubmit={handleLogin} className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-sm">
@@ -211,8 +210,15 @@ export default function AdminPage() {
         {/* ================= TAB TOKO ================= */}
         {activeTab === 'stores' && (
           <div className="space-y-4">
-            <button onClick={() => { setEditId(null); setStoreForm({ nama: '', kategori: 'Makanan', deskripsi: '', cover: '', logo: '', whatsapp: '', jam_buka: 8, jam_tutup: 22, eta: '15-20 mnt', ongkir: 5000, min_order: 10000, promo: '' }); setShowStoreForm(true); }}
-              className="w-full bg-slate-900 text-white font-bold py-3 rounded-xl hover:bg-slate-800 flex justify-center items-center gap-2 transition">
+            <button onClick={() => { 
+              setEditId(null); 
+              setStoreForm({ 
+                nama: '', kategori: 'Makanan', deskripsi: '', cover: '', logo: '', whatsapp: '', 
+                jam_buka: 8, jam_tutup: 22, eta: '15-20 mnt', ongkir: 5000, min_order: 10000, promo: '',
+                rating: 5.0, reviews: 0, jarak: 0 
+              }); 
+              setShowStoreForm(true); 
+            }} className="w-full bg-slate-900 text-white font-bold py-3 rounded-xl hover:bg-slate-800 flex justify-center items-center gap-2 transition">
               <PlusCircle className="w-5 h-5"/> Tambah Toko Baru
             </button>
 
@@ -227,51 +233,69 @@ export default function AdminPage() {
                   <div className="space-y-4 text-sm">
                     <div>
                       <label className="text-xs font-bold">Nama Toko</label>
-                      <input required value={storeForm.nama} onChange={e => setStoreForm({...storeForm, nama: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="Bakso Pak Kumis" />
+                      <input required value={storeForm.nama} onChange={e => setStoreForm({...storeForm, nama: e.target.value})} className="w-full border p-2 rounded-lg mt-1" />
                     </div>
                     <div>
                       <label className="text-xs font-bold">Kategori</label>
-                      <input required value={storeForm.kategori} onChange={e => setStoreForm({...storeForm, kategori: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="Makanan" />
+                      <input required value={storeForm.kategori} onChange={e => setStoreForm({...storeForm, kategori: e.target.value})} className="w-full border p-2 rounded-lg mt-1" />
                     </div>
                     <div>
                       <label className="text-xs font-bold">Deskripsi</label>
-                      <textarea required value={storeForm.deskripsi} onChange={e => setStoreForm({...storeForm, deskripsi: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="Deskripsi..." />
+                      <textarea required value={storeForm.deskripsi} onChange={e => setStoreForm({...storeForm, deskripsi: e.target.value})} className="w-full border p-2 rounded-lg mt-1" />
                     </div>
                     <div>
                       <label className="text-xs font-bold text-emerald-700">Nomor WhatsApp Toko</label>
-                      <input required value={storeForm.whatsapp} onChange={e => setStoreForm({...storeForm, whatsapp: e.target.value})} className="w-full border p-2 rounded-lg mt-1 border-emerald-300" placeholder="08123456789" />
+                      <input required value={storeForm.whatsapp} onChange={e => setStoreForm({...storeForm, whatsapp: e.target.value})} className="w-full border p-2 rounded-lg mt-1 border-emerald-300" />
                     </div>
-                                        {/* INPUT DETAIL TOKO */}
-                    <div className="grid grid-cols-2 gap-2">
+
+                    {/* FORM RATING DLL */}
+                    <div className="grid grid-cols-3 gap-2">
                       <div>
-                        <label className="text-xs font-bold">Jam Buka (Angka)</label>
-                        <input type="number" required value={storeForm.jam_buka} onChange={e => setStoreForm({...storeForm, jam_buka: parseInt(e.target.value)})} className="w-full border p-2 rounded-lg mt-1" placeholder="8" />
+                        <label className="text-xs font-bold">Rating (1-5)</label>
+                        <input type="number" step="0.1" min="1" max="5" required value={storeForm.rating} onChange={e => setStoreForm({...storeForm, rating: parseFloat(e.target.value)})} className="w-full border p-2 rounded-lg mt-1" />
                       </div>
                       <div>
-                        <label className="text-xs font-bold">Jam Tutup (Angka)</label>
-                        <input type="number" required value={storeForm.jam_tutup} onChange={e => setStoreForm({...storeForm, jam_tutup: parseInt(e.target.value)})} className="w-full border p-2 rounded-lg mt-1" placeholder="22" />
+                        <label className="text-xs font-bold">Jml Ulasan</label>
+                        <input type="number" required value={storeForm.reviews} onChange={e => setStoreForm({...storeForm, reviews: parseInt(e.target.value)})} className="w-full border p-2 rounded-lg mt-1" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold">Jarak (km)</label>
+                        <input type="number" step="0.1" required value={storeForm.jarak} onChange={e => setStoreForm({...storeForm, jarak: parseFloat(e.target.value)})} className="w-full border p-2 rounded-lg mt-1" />
+                      </div>
+                    </div>
+
+                    {/* FORM DETAIL TOKO LAINNYA */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs font-bold">Jam Buka</label>
+                        <input type="number" required value={storeForm.jam_buka} onChange={e => setStoreForm({...storeForm, jam_buka: parseInt(e.target.value)})} className="w-full border p-2 rounded-lg mt-1" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold">Jam Tutup</label>
+                        <input type="number" required value={storeForm.jam_tutup} onChange={e => setStoreForm({...storeForm, jam_tutup: parseInt(e.target.value)})} className="w-full border p-2 rounded-lg mt-1" />
                       </div>
                     </div>
                     <div>
-                      <label className="text-xs font-bold">Estimasi Waktu (Contoh: 15-20 mnt)</label>
-                      <input required value={storeForm.eta} onChange={e => setStoreForm({...storeForm, eta: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="15-20 mnt" />
+                      <label className="text-xs font-bold">Estimasi Waktu</label>
+                      <input required value={storeForm.eta} onChange={e => setStoreForm({...storeForm, eta: e.target.value})} className="w-full border p-2 rounded-lg mt-1" />
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="text-xs font-bold">Ongkir (Angka)</label>
-                        <input type="number" required value={storeForm.ongkir} onChange={e => setStoreForm({...storeForm, ongkir: parseInt(e.target.value)})} className="w-full border p-2 rounded-lg mt-1" placeholder="5000" />
+                        <label className="text-xs font-bold">Ongkir</label>
+                        <input type="number" required value={storeForm.ongkir} onChange={e => setStoreForm({...storeForm, ongkir: parseInt(e.target.value)})} className="w-full border p-2 rounded-lg mt-1" />
                       </div>
                       <div>
-                        <label className="text-xs font-bold">Min. Order (Angka)</label>
-                        <input type="number" required value={storeForm.min_order} onChange={e => setStoreForm({...storeForm, min_order: parseInt(e.target.value)})} className="w-full border p-2 rounded-lg mt-1" placeholder="10000" />
+                        <label className="text-xs font-bold">Min. Order</label>
+                        <input type="number" required value={storeForm.min_order} onChange={e => setStoreForm({...storeForm, min_order: parseInt(e.target.value)})} className="w-full border p-2 rounded-lg mt-1" />
                       </div>
                     </div>
                     <div>
                       <label className="text-xs font-bold text-orange-600">Promo (Kosongkan jika tidak ada)</label>
-                      <input value={storeForm.promo} onChange={e => setStoreForm({...storeForm, promo: e.target.value})} className="w-full border p-2 rounded-lg mt-1 border-orange-300" placeholder="Contoh: Diskon 20% menu kopi" />
+                      <input value={storeForm.promo} onChange={e => setStoreForm({...storeForm, promo: e.target.value})} className="w-full border p-2 rounded-lg mt-1 border-orange-300" />
                     </div>
+
                     <div>
-                      <label className="text-xs font-bold block mb-1">Foto Cover (Landscape)</label>
+                      <label className="text-xs font-bold block mb-1">Foto Cover</label>
                       {storeForm.cover && <img src={storeForm.cover} className="h-20 w-full object-cover rounded-lg mb-2" alt="Preview" />}
                       <label className="flex items-center justify-center w-full border-2 border-dashed border-slate-300 p-3 rounded-lg cursor-pointer hover:bg-slate-50 transition">
                         <input type="file" accept="image/*" className="hidden" onChange={(e) => handleUploadImage(e, 'store_cover')} disabled={isUploading} />
@@ -279,7 +303,7 @@ export default function AdminPage() {
                       </label>
                     </div>
                     <div>
-                      <label className="text-xs font-bold block mb-1">Foto Logo (Kotak)</label>
+                      <label className="text-xs font-bold block mb-1">Foto Logo</label>
                       {storeForm.logo && <img src={storeForm.logo} className="h-16 w-16 object-cover rounded-lg mb-2" alt="Preview" />}
                       <label className="flex items-center justify-center w-full border-2 border-dashed border-slate-300 p-3 rounded-lg cursor-pointer hover:bg-slate-50 transition">
                         <input type="file" accept="image/*" className="hidden" onChange={(e) => handleUploadImage(e, 'store_logo')} disabled={isUploading} />
@@ -291,8 +315,7 @@ export default function AdminPage() {
                 </form>
               </div>
             )}
-
-            <div className="bg-white rounded-2xl shadow-sm border overflow-x-auto">
+                        <div className="bg-white rounded-2xl shadow-sm border overflow-x-auto">
               <table className="w-full text-left text-sm min-w-[500px]">
                 <thead className="bg-slate-50 border-b">
                   <tr><th className="p-3">Nama Toko</th><th className="p-3">Kategori</th><th className="p-3 text-right">Aksi</th></tr>
@@ -340,10 +363,10 @@ export default function AdminPage() {
                        {stores.map(s => <option key={s.id} value={s.id}>{s.nama}</option>)}
                      </select>
                    </div>
-                   <div><label className="text-xs font-bold">Nama Menu</label><input required value={productForm.nama} onChange={e => setProductForm({...productForm, nama: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="Bakso Urat" /></div>
-                   <div><label className="text-xs font-bold">Harga (Angka)</label><input required type="number" value={productForm.harga} onChange={e => setProductForm({...productForm, harga: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="15000" /></div>
-                   <div><label className="text-xs font-bold">Kategori Menu</label><input required value={productForm.kategori} onChange={e => setProductForm({...productForm, kategori: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="Makanan" /></div>
-                   <div><label className="text-xs font-bold">Deskripsi</label><textarea required value={productForm.deskripsi} onChange={e => setProductForm({...productForm, deskripsi: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="Deskripsi..." /></div>
+                   <div><label className="text-xs font-bold">Nama Menu</label><input required value={productForm.nama} onChange={e => setProductForm({...productForm, nama: e.target.value})} className="w-full border p-2 rounded-lg mt-1" /></div>
+                   <div><label className="text-xs font-bold">Harga (Angka)</label><input required type="number" value={productForm.harga} onChange={e => setProductForm({...productForm, harga: e.target.value})} className="w-full border p-2 rounded-lg mt-1" /></div>
+                   <div><label className="text-xs font-bold">Kategori Menu</label><input required value={productForm.kategori} onChange={e => setProductForm({...productForm, kategori: e.target.value})} className="w-full border p-2 rounded-lg mt-1" /></div>
+                   <div><label className="text-xs font-bold">Deskripsi</label><textarea required value={productForm.deskripsi} onChange={e => setProductForm({...productForm, deskripsi: e.target.value})} className="w-full border p-2 rounded-lg mt-1" /></div>
                    
                    <div>
                      <label className="text-xs font-bold block mb-1">Foto Menu</label>
