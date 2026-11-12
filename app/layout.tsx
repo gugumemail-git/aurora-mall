@@ -4,7 +4,7 @@ import { ThemeProvider } from '@/context/ThemeContext';
 import { ToastProvider } from '@/context/ToastContext';
 
 export const metadata: Metadata = {
-  title: 'Pasar Kita — Temukan Toko Favoritmu',
+  title: 'Aurora Mall — Temukan Toko Favoritmu',
   description: 'Pasar digital: pilih toko, pesan menu favorit, kirim via WhatsApp.'
 };
 

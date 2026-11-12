@@ -109,7 +109,7 @@ export default function HomePage() {
   const activeStore = activeId ? stores.find(s => s.id === activeId) : null;
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center text-sm font-bold text-slate-500">Memuat Pasar Kita...</div>;
+    return <div className="min-h-screen flex items-center justify-center text-sm font-bold text-slate-500">Memuat Aurora Mall...</div>;
   }
 
   return (
@@ -117,9 +117,9 @@ export default function HomePage() {
       <header className="sticky top-0 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center font-black text-lg shadow-md shadow-emerald-600/30">P</div>
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center font-black text-lg shadow-md shadow-emerald-600/30">A</div>
             <div>
-              <h1 className="font-bold text-slate-900 dark:text-white text-base leading-tight">Pasar Kita</h1>
+              <h1 className="font-bold text-slate-900 dark:text-white text-base leading-tight">Aurora Mall</h1>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
                 <MapPin className="w-3 h-3" /> Jakarta Selatan
               </p>
