@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { 
   ArrowLeft, Store, PlusCircle, Utensils, X, LayoutDashboard, 
-  UploadCloud, Loader2, LogOut, Receipt, CheckCircle2
+  UploadCloud, Loader2, LogOut, Receipt, CheckCircle2, Edit, Trash2
 } from 'lucide-react';
 
 export default function AdminPage() {
