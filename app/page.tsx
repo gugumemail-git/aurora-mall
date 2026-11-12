@@ -1,259 +1,426 @@
 'use client';
-import { useMemo, useState, useEffect } from 'react';
-import { Search, Sparkles, Flame, Heart, MapPin } from 'lucide-react';
-import { isOpen } from '@/lib/store';
-import StoreCard from '@/components/StoreCard';
-import StoreModal from '@/components/StoreModal';
-import ThemeToggle from '@/components/ThemeToggle';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import type { Store } from '@/lib/types';
+import Link from 'next/link';
+import { 
+  ArrowLeft, Store, PlusCircle, Utensils, X, LayoutDashboard, 
+  UploadCloud, Loader2, LogOut, Receipt, CheckCircle2, Edit, Trash2
+} from 'lucide-react';
 
-const FILTERS = [
-  { key: 'all', label: 'Semua' },
-  { key: 'open', label: '🟢 Buka' },
-  { key: 'promo', label: '🏷️ Promo' },
-  { key: 'top', label: '⭐ Rating 4.5+' },
-  { key: 'near', label: '📍 Terdekat' }
-] as const;
+export default function AdminPage() {
+  const [session, setSession] = useState<any>(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  
+  const [stores, setStores] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
+  
+  const [activeTab, setActiveTab] = useState<'stores' | 'products' | 'orders'>('stores');
+  const [message, setMessage] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  
+  const [showStoreForm, setShowStoreForm] = useState(false);
+  const [showProductForm, setShowProductForm] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
 
-const QUICK = [
-  { q: 'kopi', label: '☕ Kopi' },
-  { q: 'nasi', label: '🍚 Nasi' },
-  { q: 'snack', label: '🍟 Snack' },
-  { q: 'dessert', label: '🍰 Dessert' }
-];
-
-type FilterKey = typeof FILTERS[number]['key'];
-
-export default function HomePage() {
-  const [stores, setStores] = useState<Store[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('all');
-  const [filter, setFilter] = useState<FilterKey>('all');
-  const [sort, setSort] = useState<'populer' | 'rating' | 'near' | 'promo'>('populer');
-  const [favOnly, setFavOnly] = useState(false);
-  const [favs, setFavs] = useState<string[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [storeForm, setStoreForm] = useState({ nama: '', kategori: 'Makanan', deskripsi: '', cover: '', logo: '', whatsapp: '', jam_buka: 8, jam_tutup: 22 });
+  const [productForm, setProductForm] = useState({ store_id: '', nama: '', harga: '', kategori: 'Makanan', deskripsi: '', foto: '' });
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('pasar_fav');
-      if (saved) setFavs(JSON.parse(saved));
-    } catch {}
-
-    async function fetchStores() {
-      const { data, error } = await supabase.from('stores').select('*');
-      if (!error && data) {
-        const formatted = data.map((d: any) => ({
-          id: d.id,
-          slug: d.slug,
-          nama: d.nama,
-          kategori: d.kategori,
-          deskripsi: d.deskripsi,
-          cover: d.cover,
-          logo: d.logo,
-          whatsapp: d.whatsapp || '',
-          rating: d.rating,
-          reviews: d.reviews,
-          jarak: d.jarak,
-          eta: d.eta,
-          ongkir: d.ongkir,
-          minOrder: d.min_order,
-          jam: { buka: d.jam_buka, tutup: d.jam_tutup },
-          promo: d.promo,
-          populer: d.populer
-        }));
-        setStores(formatted);
-      }
-      setLoading(false);
-    }
-    fetchStores();
+    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session));
+    return () => subscription.unsubscribe();
   }, []);
 
-  const toggleFav = (id: string) => {
-    setFavs(prev => {
-      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
-      localStorage.setItem('pasar_fav', JSON.stringify(next));
-      return next;
-    });
+  const fetchData = async () => {
+    const { data: storesData } = await supabase.from('stores').select('*').order('created_at', { ascending: false });
+    const { data: productsData } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+    const { data: ordersData } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+    if (storesData) setStores(storesData);
+    if (productsData) setProducts(productsData);
+    if (ordersData) setOrders(ordersData);
   };
 
-  const categories = useMemo(() => ['all', ...new Set(stores.map(s => s.kategori))], [stores]);
+  useEffect(() => {
+    if (session) fetchData();
+  }, [session]);
 
-  const filtered = useMemo(() => {
-    let list = [...stores];
-    if (category !== 'all') list = list.filter(s => s.kategori === category);
-    if (filter === 'open') list = list.filter(isOpen);
-    if (filter === 'promo') list = list.filter(s => s.promo);
-    if (filter === 'top') list = list.filter(s => s.rating >= 4.5);
-    if (filter === 'near') list = list.filter(s => s.jarak <= 1);
-    if (search) {
-      const q = search.toLowerCase();
-      list = list.filter(s =>
-        s.nama.toLowerCase().includes(q) ||
-        s.kategori.toLowerCase().includes(q) ||
-        s.deskripsi.toLowerCase().includes(q)
-      );
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) alert('Gagal Login: ' + error.message);
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
+
+  const handleUploadImage = async (e: React.ChangeEvent<HTMLInputElement>, target: 'store_cover' | 'store_logo' | 'product_foto') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploading(true);
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${file.name.split('.').pop()}`;
+    const { error } = await supabase.storage.from('images').upload(fileName, file);
+    
+    if (error) setMessage('Gagal upload: ' + error.message);
+    else {
+      const { data } = await supabase.storage.from('images').getPublicUrl(fileName);
+      if (target === 'store_cover') setStoreForm({...storeForm, cover: data.publicUrl});
+      if (target === 'store_logo') setStoreForm({...storeForm, logo: data.publicUrl});
+      if (target === 'product_foto') setProductForm({...productForm, foto: data.publicUrl});
     }
-    if (favOnly) list = list.filter(s => favs.includes(s.id));
-    if (sort === 'rating') list.sort((a, b) => b.rating - a.rating);
-    else if (sort === 'near') list.sort((a, b) => a.jarak - b.jarak);
-    else if (sort === 'promo') list.sort((a, b) => (b.promo ? 1 : 0) - (a.promo ? 1 : 0));
-    else list.sort((a, b) => b.populer - a.populer);
-    return list;
-  }, [category, filter, search, sort, favOnly, favs, stores]);
+    setIsUploading(false);
+  };
 
-  const promos = stores.filter(s => s.promo);
-  const activeStore = activeId ? stores.find(s => s.id === activeId) : null;
+  const handleSaveStore = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const payload = {
+      ...storeForm,
+      slug: storeForm.nama.toLowerCase().replace(/ /g, '-'),
+    };
+    if (payload.whatsapp.startsWith('0')) payload.whatsapp = '62' + payload.whatsapp.slice(1);
+    if (payload.whatsapp.startsWith('+62')) payload.whatsapp = payload.whatsapp.slice(1);
 
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center text-sm font-bold text-slate-500">Memuat Aurora Mall...</div>;
+    let error;
+    if (editId) {
+      const res = await supabase.from('stores').update(payload).eq('id', editId);
+      error = res.error;
+    } else {
+      const res = await supabase.from('stores').insert([{
+        ...payload, rating: 5.0, reviews: 0, jarak: 0, eta: '15-20 mnt', ongkir: 5000, min_order: 10000, populer: 0
+      }]);
+      error = res.error;
+    }
+
+    if (error) setMessage('Error: ' + error.message);
+    else {
+      setMessage(editId ? 'Toko diupdate!' : 'Toko ditambahkan!');
+      setShowStoreForm(false);
+      setEditId(null);
+      setStoreForm({ nama: '', kategori: 'Makanan', deskripsi: '', cover: '', logo: '', whatsapp: '', jam_buka: 8, jam_tutup: 22 });
+      fetchData();
+    }
+  };
+
+  const handleDeleteStore = async (id: string) => {
+    if (!confirm('Yakin hapus toko ini? Semua menu dan pesanannya akan hilang.')) return;
+    const { error } = await supabase.from('stores').delete().eq('id', id);
+    if (error) setMessage('Gagal hapus: ' + error.message);
+    else { setMessage('Toko dihapus.'); fetchData(); }
+  };
+
+  const handleSaveProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const payload = {
+      store_id: productForm.store_id, nama: productForm.nama, harga: parseInt(productForm.harga),
+      kategori: productForm.kategori, deskripsi: productForm.deskripsi, foto: productForm.foto
+    };
+    let error;
+    if (editId) {
+      const res = await supabase.from('products').update(payload).eq('id', editId);
+      error = res.error;
+    } else {
+      const res = await supabase.from('products').insert([payload]);
+      error = res.error;
+    }
+
+    if (error) setMessage('Error: ' + error.message);
+    else {
+      setMessage(editId ? 'Menu diupdate!' : 'Menu ditambahkan!');
+      setShowProductForm(false);
+      setEditId(null);
+      setProductForm({ store_id: '', nama: '', harga: '', kategori: 'Makanan', deskripsi: '', foto: '' });
+      fetchData();
+    }
+  };
+
+  const handleDeleteProduct = async (id: string) => {
+    if (!confirm('Hapus menu ini?')) return;
+    const { error } = await supabase.from('products').delete().eq('id', id);
+    if (error) setMessage('Gagal hapus: ' + error.message);
+    else { setMessage('Menu dihapus.'); fetchData(); }
+  };
+
+  // FUNGSI HAPUS PESANAN
+  const handleDeleteOrder = async (id: string) => {
+    if (!confirm('Yakin ingin menghapus pesanan ini? Data yang dihapus tidak bisa dikembalikan.')) return;
+    
+    const { error } = await supabase.from('orders').delete().eq('id', id);
+    if (error) {
+      setMessage('Gagal hapus pesanan: ' + error.message);
+    } else {
+      setMessage('Pesanan berhasil dihapus.');
+      fetchData();
+    }
+  };
+
+  if (!session) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
+        <form onSubmit={handleLogin} className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-sm">
+          <h1 className="text-xl font-bold mb-4 text-center">Admin Login</h1>
+          <input type="email" placeholder="Email Admin" value={email} onChange={e => setEmail(e.target.value)} required className="w-full border p-3 rounded-xl mb-3 text-sm" />
+          <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required className="w-full border p-3 rounded-xl mb-3 text-sm" />
+          <button type="submit" className="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl">Masuk</button>
+        </form>
+      </div>
+    );
   }
 
   return (
-    <>
-      <header className="sticky top-0 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800">
-        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+    <div className="min-h-screen bg-slate-50 p-4 pb-20">
+      <div className="max-w-5xl mx-auto">
+        
+        <div className="flex items-center justify-between mb-6 bg-white p-4 rounded-2xl shadow-sm border">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center font-black text-lg shadow-md shadow-emerald-600/30">A</div>
-            <div>
-              <h1 className="font-bold text-slate-900 dark:text-white text-base leading-tight">Aurora Mall</h1>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                <MapPin className="w-3 h-3" /> Jakarta Selatan
-              </p>
-            </div>
+            <Link href="/" className="p-2 bg-slate-100 rounded-lg hover:bg-slate-200 transition"><ArrowLeft className="w-5 h-5" /></Link>
+            <h1 className="text-lg font-bold flex items-center gap-2"><LayoutDashboard className="w-5 h-5 text-emerald-600"/> Dashboard Admin Aurora Mall</h1>
           </div>
-          <div className="flex items-center gap-2">
-            <button onClick={() => setFavOnly(v => !v)} aria-label="Favorit"
-              className={`relative p-2.5 rounded-xl transition ${
-                favOnly ? 'bg-red-500 text-white' : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200'
-              }`}>
-              <Heart className={`w-5 h-5 ${favOnly ? 'fill-white' : ''}`} />
-              {favs.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-extrabold min-w-4 h-4 px-1 rounded-full flex items-center justify-center border-2 border-white dark:border-slate-900">
-                  {favs.length}
-                </span>
-              )}
-            </button>
-            <ThemeToggle />
-          </div>
+          <button onClick={handleLogout} className="flex items-center gap-2 text-sm font-bold text-red-600 bg-red-50 px-4 py-2 rounded-xl hover:bg-red-100 transition">
+            <LogOut className="w-4 h-4" /> Logout
+          </button>
         </div>
-      </header>
 
-      <main className="max-w-2xl mx-auto px-4 pt-4 pb-16">
-        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-600 via-teal-600 to-emerald-700 p-6 mb-5 shadow-xl shadow-emerald-600/20">
-          <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-white/10 blur-2xl" />
-          <div className="absolute -bottom-20 -left-10 w-56 h-56 rounded-full bg-white/10 blur-3xl" />
-          <div className="relative">
-            <p className="text-emerald-100 text-xs font-semibold mb-1 flex items-center gap-1">
-              <Sparkles className="w-3.5 h-3.5" /> Selamat datang di Aurora Mall
-            </p>
-            <h2 className="text-white text-2xl font-extrabold leading-tight mb-4">Mau cari apa<br />hari ini?</h2>
-            <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input value={search} onChange={e => setSearch(e.target.value)}
-                placeholder="Cari toko, makanan, minuman..."
-                className="w-full pl-10 pr-4 py-3 text-xs bg-white dark:bg-slate-900 rounded-2xl border-0 focus:outline-none focus:ring-2 focus:ring-white/50 shadow-lg" />
-            </div>
-            <div className="flex flex-wrap gap-2 mt-3">
-              {QUICK.map(q => (
-                <button key={q.q} onClick={() => setSearch(q.q)}
-                  className="px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white text-[11px] font-semibold rounded-full backdrop-blur transition">
-                  {q.label}
-                </button>
-              ))}
-            </div>
+        {message && (
+          <div className="mb-4 p-3 bg-emerald-100 text-emerald-800 rounded-xl flex items-center justify-between text-sm font-semibold">
+            <div className="flex items-center gap-2"><CheckCircle2 className="w-5 h-5" /> {message}</div>
+            <button onClick={() => setMessage('')}><X className="w-4 h-4" /></button>
           </div>
-        </section>
-
-        <section className="mb-5">
-          <div className="flex items-center justify-between mb-2.5">
-            <h3 className="font-bold text-slate-800 dark:text-white text-sm">Kategori</h3>
-            <button onClick={() => { setCategory('all'); setFilter('all'); setSearch(''); setSort('populer'); setFavOnly(false); }}
-              className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:underline">Reset</button>
-          </div>
-          <div className="overflow-x-auto hide-scrollbar -mx-4 px-4 flex gap-2">
-            {categories.map(c => (
-              <button key={c} onClick={() => setCategory(c)}
-                className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap shadow-sm transition ${
-                  c === category ? 'bg-emerald-600 text-white' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800'
-                }`}>
-                {c === 'all' ? '🌟 Semua' : c}
-              </button>
-            ))}
-          </div>
-        </section>
-
-        {promos.length > 0 && (
-          <section className="mb-5">
-            <div className="flex items-center justify-between mb-2.5">
-              <h3 className="font-bold text-slate-800 dark:text-white text-sm flex items-center gap-1.5">
-                <Flame className="w-4 h-4 text-orange-500" /> Lagi Promo
-              </h3>
-            </div>
-            <div className="overflow-x-auto hide-scrollbar -mx-4 px-4 flex gap-3 pb-1">
-              {promos.map(s => (
-                <div key={s.id} onClick={() => setActiveId(s.id)}
-                  className="shrink-0 w-56 bg-white dark:bg-slate-900 rounded-2xl p-2.5 border border-slate-100 dark:border-slate-800 shadow-sm cursor-pointer hover:shadow-md transition">
-                  <div className="relative w-full h-24 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 mb-2">
-                    <img src={s.cover} alt={s.nama} className="w-full h-full object-cover" loading="lazy" />
-                    <span className="absolute top-1.5 left-1.5 bg-orange-500 text-white text-[9px] font-extrabold px-2 py-0.5 rounded-full">PROMO</span>
-                  </div>
-                  <h4 className="font-bold text-[11px] text-slate-800 dark:text-white line-clamp-1">{s.nama}</h4>
-                  <p className="text-[10px] text-orange-600 dark:text-orange-400 line-clamp-1 mt-0.5">{s.promo}</p>
-                </div>
-              ))}
-            </div>
-          </section>
         )}
 
-        <section className="mb-4 flex items-center gap-2 overflow-x-auto hide-scrollbar -mx-4 px-4">
-          {FILTERS.map(f => (
-            <button key={f.key} onClick={() => setFilter(f.key)}
-              className={`filter-chip ${filter === f.key ? 'active' : ''}`}>
-              {f.label}
+        <div className="flex gap-2 mb-6 overflow-x-auto hide-scrollbar">
+          <button onClick={() => { setActiveTab('stores'); setShowStoreForm(false); setShowProductForm(false); }} 
+            className={`flex-1 min-w-[120px] py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition ${activeTab === 'stores' ? 'bg-emerald-600 text-white' : 'bg-white text-slate-600 shadow-sm border'}`}>
+            <Store className="w-4 h-4" /> Toko
+          </button>
+          <button onClick={() => { setActiveTab('products'); setShowStoreForm(false); setShowProductForm(false); }} 
+            className={`flex-1 min-w-[120px] py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition ${activeTab === 'products' ? 'bg-emerald-600 text-white' : 'bg-white text-slate-600 shadow-sm border'}`}>
+            <Utensils className="w-4 h-4" /> Menu
+          </button>
+          <button onClick={() => { setActiveTab('orders'); setShowStoreForm(false); setShowProductForm(false); }} 
+            className={`flex-1 min-w-[120px] py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition ${activeTab === 'orders' ? 'bg-emerald-600 text-white' : 'bg-white text-slate-600 shadow-sm border'}`}>
+            <Receipt className="w-4 h-4" /> Pesanan
+          </button>
+        </div>
+
+        {/* ================= TAB TOKO ================= */}
+        {activeTab === 'stores' && (
+          <div className="space-y-4">
+            <button onClick={() => { setEditId(null); setStoreForm({ nama: '', kategori: 'Makanan', deskripsi: '', cover: '', logo: '', whatsapp: '', jam_buka: 8, jam_tutup: 22 }); setShowStoreForm(true); }}
+              className="w-full bg-slate-900 text-white font-bold py-3 rounded-xl hover:bg-slate-800 flex justify-center items-center gap-2 transition">
+              <PlusCircle className="w-5 h-5"/> Tambah Toko Baru
             </button>
-          ))}
-        </section>
 
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-bold text-slate-800 dark:text-white text-sm">
-              {favOnly ? 'Favorit Saya' : (filter === 'all' && category === 'all' && !search ? 'Semua Toko' : 'Hasil Pencarian')}
-            </h3>
-            <select value={sort} onChange={e => setSort(e.target.value as any)}
-              className="px-2.5 py-1.5 text-[11px] bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-emerald-500 shadow-sm font-semibold text-slate-600 dark:text-slate-300">
-              <option value="populer">Populer</option>
-              <option value="rating">Rating Tertinggi</option>
-              <option value="near">Terdekat</option>
-              <option value="promo">Promo</option>
-            </select>
+            {showStoreForm && (
+              <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
+                <form onSubmit={handleSaveStore} className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 shadow-2xl">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="font-bold text-lg">{editId ? 'Edit Toko' : 'Toko Baru'}</h2>
+                    <button type="button" onClick={() => setShowStoreForm(false)}><X className="w-5 h-5"/></button>
+                  </div>
+                  
+                  <div className="space-y-4 text-sm">
+                    <div>
+                      <label className="text-xs font-bold">Nama Toko</label>
+                      <input required value={storeForm.nama} onChange={e => setStoreForm({...storeForm, nama: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="Bakso Pak Kumis" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold">Kategori</label>
+                      <input required value={storeForm.kategori} onChange={e => setStoreForm({...storeForm, kategori: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="Makanan" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold">Deskripsi</label>
+                      <textarea required value={storeForm.deskripsi} onChange={e => setStoreForm({...storeForm, deskripsi: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="Deskripsi..." />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-emerald-700">Nomor WhatsApp Toko</label>
+                      <input required value={storeForm.whatsapp} onChange={e => setStoreForm({...storeForm, whatsapp: e.target.value})} className="w-full border p-2 rounded-lg mt-1 border-emerald-300" placeholder="08123456789" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold block mb-1">Foto Cover (Landscape)</label>
+                      {storeForm.cover && <img src={storeForm.cover} className="h-20 w-full object-cover rounded-lg mb-2" alt="Preview" />}
+                      <label className="flex items-center justify-center w-full border-2 border-dashed border-slate-300 p-3 rounded-lg cursor-pointer hover:bg-slate-50 transition">
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleUploadImage(e, 'store_cover')} disabled={isUploading} />
+                        {isUploading ? <Loader2 className="w-5 h-5 animate-spin text-slate-500" /> : <span className="text-slate-500 text-xs font-semibold flex items-center gap-2"><UploadCloud className="w-4 h-4"/> Pilih File Cover</span>}
+                      </label>
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold block mb-1">Foto Logo (Kotak)</label>
+                      {storeForm.logo && <img src={storeForm.logo} className="h-16 w-16 object-cover rounded-lg mb-2" alt="Preview" />}
+                      <label className="flex items-center justify-center w-full border-2 border-dashed border-slate-300 p-3 rounded-lg cursor-pointer hover:bg-slate-50 transition">
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleUploadImage(e, 'store_logo')} disabled={isUploading} />
+                        {isUploading ? <Loader2 className="w-5 h-5 animate-spin text-slate-500" /> : <span className="text-slate-500 text-xs font-semibold flex items-center gap-2"><UploadCloud className="w-4 h-4"/> Pilih File Logo</span>}
+                      </label>
+                    </div>
+                    <button type="submit" disabled={isUploading} className="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl hover:bg-emerald-500 mt-4 disabled:opacity-50">Simpan Toko</button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            <div className="bg-white rounded-2xl shadow-sm border overflow-x-auto">
+              <table className="w-full text-left text-sm min-w-[500px]">
+                <thead className="bg-slate-50 border-b">
+                  <tr><th className="p-3">Nama Toko</th><th className="p-3">Kategori</th><th className="p-3 text-right">Aksi</th></tr>
+                </thead>
+                <tbody>
+                  {stores.map(s => (
+                    <tr key={s.id} className="border-b last:border-0 hover:bg-slate-50">
+                      <td className="p-3 flex items-center gap-2">
+                        <img src={s.logo || 'https://placehold.co/100x100?text=L'} className="w-8 h-8 rounded object-cover bg-slate-200" alt="" />
+                        <span className="font-semibold">{s.nama}</span>
+                      </td>
+                      <td className="p-3 text-slate-500">{s.kategori}</td>
+                      <td className="p-3 text-right space-x-2">
+                        <button onClick={() => { setEditId(s.id); setStoreForm({...s, whatsapp: s.whatsapp || ''}); setShowStoreForm(true); }} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"><Edit className="w-4 h-4"/></button>
+                        <button onClick={() => handleDeleteStore(s.id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4"/></button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
+        )}
 
-          {filtered.length === 0 ? (
-            <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
-              <p className="text-xs text-slate-400">Tidak ada toko yang cocok</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {filtered.map(s => (
-                <StoreCard key={s.id} store={s} fav={favs.includes(s.id)}
-                  onToggleFav={() => toggleFav(s.id)}
-                  onClick={() => setActiveId(s.id)} />
-              ))}
-            </div>
-          )}
-        </section>
-      </main>
+        {/* ================= TAB MENU ================= */}
+        {activeTab === 'products' && (
+           <div className="space-y-4">
+           <button onClick={() => { setEditId(null); setProductForm({ store_id: '', nama: '', harga: '', kategori: 'Makanan', deskripsi: '', foto: '' }); setShowProductForm(true); }}
+             className="w-full bg-slate-900 text-white font-bold py-3 rounded-xl hover:bg-slate-800 flex justify-center items-center gap-2 transition">
+             <PlusCircle className="w-5 h-5"/> Tambah Menu Baru
+           </button>
 
-      {activeStore && (
-        <StoreModal store={activeStore} open={!!activeStore}
-          onClose={() => setActiveId(null)}
-          fav={favs.includes(activeStore.id)}
-          onToggleFav={() => toggleFav(activeStore.id)} />
-      )}
-    </>
+           {showProductForm && (
+             <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
+               <form onSubmit={handleSaveProduct} className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 shadow-2xl">
+                 <div className="flex justify-between items-center mb-4">
+                   <h2 className="font-bold text-lg">{editId ? 'Edit Menu' : 'Menu Baru'}</h2>
+                   <button type="button" onClick={() => setShowProductForm(false)}><X className="w-5 h-5"/></button>
+                 </div>
+                 <div className="space-y-4 text-sm">
+                   <div>
+                     <label className="text-xs font-bold">Pilih Toko</label>
+                     <select required value={productForm.store_id} onChange={e => setProductForm({...productForm, store_id: e.target.value})} className="w-full border p-2 rounded-lg mt-1">
+                       <option value="">-- Pilih Toko --</option>
+                       {stores.map(s => <option key={s.id} value={s.id}>{s.nama}</option>)}
+                     </select>
+                   </div>
+                   <div><label className="text-xs font-bold">Nama Menu</label><input required value={productForm.nama} onChange={e => setProductForm({...productForm, nama: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="Bakso Urat" /></div>
+                   <div><label className="text-xs font-bold">Harga (Angka)</label><input required type="number" value={productForm.harga} onChange={e => setProductForm({...productForm, harga: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="15000" /></div>
+                   <div><label className="text-xs font-bold">Kategori Menu</label><input required value={productForm.kategori} onChange={e => setProductForm({...productForm, kategori: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="Makanan" /></div>
+                   <div><label className="text-xs font-bold">Deskripsi</label><textarea required value={productForm.deskripsi} onChange={e => setProductForm({...productForm, deskripsi: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="Deskripsi..." /></div>
+                   
+                   <div>
+                     <label className="text-xs font-bold block mb-1">Foto Menu</label>
+                     {productForm.foto && <img src={productForm.foto} className="h-24 w-full object-cover rounded-lg mb-2" alt="Preview" />}
+                     <label className="flex items-center justify-center w-full border-2 border-dashed border-slate-300 p-3 rounded-lg cursor-pointer hover:bg-slate-50 transition">
+                       <input type="file" accept="image/*" className="hidden" onChange={(e) => handleUploadImage(e, 'product_foto')} disabled={isUploading} />
+                       {isUploading ? <Loader2 className="w-5 h-5 animate-spin text-slate-500" /> : <span className="text-slate-500 text-xs font-semibold flex items-center gap-2"><UploadCloud className="w-4 h-4"/> Pilih File Foto Menu</span>}
+                     </label>
+                   </div>
+
+                   <button type="submit" disabled={isUploading} className="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl hover:bg-emerald-500 mt-4 disabled:opacity-50">Simpan Menu</button>
+                 </div>
+               </form>
+             </div>
+           )}
+
+           <div className="bg-white rounded-2xl shadow-sm border overflow-x-auto">
+             <table className="w-full text-left text-sm min-w-[600px]">
+               <thead className="bg-slate-50 border-b">
+                 <tr><th className="p-3">Menu & Toko</th><th className="p-3">Harga</th><th className="p-3 text-right">Aksi</th></tr>
+               </thead>
+               <tbody>
+                 {products.map(p => {
+                   const toko = stores.find(s => s.id === p.store_id)?.nama || 'Toko Terhapus';
+                   return (
+                     <tr key={p.id} className="border-b last:border-0 hover:bg-slate-50">
+                       <td className="p-3 flex items-center gap-3">
+                         <img src={p.foto || 'https://placehold.co/100x100?text=Foto'} className="w-10 h-10 rounded-lg object-cover bg-slate-200" alt="" />
+                         <div>
+                           <p className="font-bold text-slate-800">{p.nama}</p>
+                           <p className="text-[11px] text-slate-500">{toko} • {p.kategori}</p>
+                         </div>
+                       </td>
+                       <td className="p-3 text-emerald-600 font-bold">Rp {p.harga.toLocaleString('id-ID')}</td>
+                       <td className="p-3 text-right space-x-2">
+                         <button onClick={() => { setEditId(p.id); setProductForm({...p, harga: p.harga.toString()}); setShowProductForm(true); }} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"><Edit className="w-4 h-4"/></button>
+                         <button onClick={() => handleDeleteProduct(p.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4"/></button>
+                       </td>
+                     </tr>
+                   );
+                 })}
+               </tbody>
+             </table>
+           </div>
+         </div>
+        )}
+
+        {/* ================= TAB PESANAN ================= */}
+        {activeTab === 'orders' && (
+          <div className="space-y-4">
+            <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider mb-1">Total Pendapatan</p>
+                <p className="text-2xl font-black text-emerald-700">Rp {orders.reduce((sum, o) => sum + o.total, 0).toLocaleString('id-ID')}</p>
+              </div>
+              <div className="sm:text-right">
+                <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider mb-1">Total Pesanan</p>
+                <p className="text-2xl font-black text-emerald-700">{orders.length}</p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
+              {orders.length === 0 ? (
+                <div className="p-8 text-center text-slate-400">Belum ada pesanan masuk</div>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {orders.map(o => {
+                    const toko = stores.find(s => s.id === o.store_id)?.nama || 'Toko Terhapus';
+                    return (
+                      <div key={o.id} className="p-4 hover:bg-slate-50 transition flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                        
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-bold text-slate-800">{o.customer_name}</p>
+                            <span className="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded font-semibold">{o.order_type}</span>
+                          </div>
+                          <p className="text-[11px] font-semibold text-emerald-600 mb-1">
+                            📱 {o.customer_wa ? o.customer_wa : '-'}
+                          </p>
+                          <p className="text-[10px] text-slate-400">{new Date(o.created_at).toLocaleString('id-ID')}</p>
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] font-bold text-emerald-600 mb-1">{toko}</p>
+                          {o.items.map((item: any, i: number) => (
+                            <p key={i} className="text-[11px] text-slate-600">{item.jumlah}x {item.nama}</p>
+                          ))}
+                          {o.notes && <p className="text-[10px] text-slate-400 mt-1 italic">"{o.notes}"</p>}
+                        </div>
+
+                        <div className="flex items-center sm:flex-col sm:items-end justify-between sm:justify-start gap-2 shrink-0">
+                          <p className="font-bold text-slate-800 text-sm">Rp {o.total.toLocaleString('id-ID')}</p>
+                          <button 
+                            onClick={() => handleDeleteOrder(o.id)} 
+                            className="flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 px-2.5 py-1.5 rounded-lg transition"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" /> Hapus
+                          </button>
+                        </div>
+
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+      </div>
+    </div>
   );
 }
