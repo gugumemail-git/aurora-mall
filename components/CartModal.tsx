@@ -6,6 +6,7 @@ import { useCart } from '@/context/CartContext';
 import { useToast } from '@/context/ToastContext';
 import type { Store } from '@/lib/types';
 import { rp } from '@/lib/format';
+import { supabase } from '@/lib/supabase'; // <-- Import Supabase
 
 const TAX = 5;
 
@@ -17,9 +18,7 @@ export default function CartModal({ open, onClose, store }: Props) {
   const [name, setName] = useState('');
   const [notes, setNotes] = useState('');
   const [orderType, setOrderType] = useState<'Dine-in' | 'Takeaway' | 'Delivery'>('Dine-in');
-
-  const tax = Math.round(subtotal * TAX / 100);
-  const total = subtotal + tax;
+  const [isLoading, setIsLoading] = useState(false);
 
   const storeItems = useMemo(() => items.filter(i => i.storeId === store.id), [items, store.id]);
   const storeSubtotal = storeItems.reduce((s, i) => s + i.harga * i.jumlah, 0);
@@ -28,10 +27,31 @@ export default function CartModal({ open, onClose, store }: Props) {
 
   if (!open) return null;
 
-  const checkout = () => {
+  // Ini fungsi yang kita perbarui
+  const sendWhatsAppOrder = async () => {
     if (!name.trim()) { show('Mohon isi nama pemesan', 'error'); return; }
     if (storeItems.length === 0) { show('Keranjang kosong', 'error'); return; }
 
+    setIsLoading(true);
+
+    // 1. SIMPAN KE DATABASE SUPABASE
+    const { error: dbError } = await supabase.from('orders').insert([{
+      store_id: store.id,
+      customer_name: name,
+      order_type: orderType,
+      notes: notes,
+      items: storeItems,
+      subtotal: storeSubtotal,
+      tax: storeTax,
+      total: storeTotal
+    }]);
+
+    if (dbError) {
+      show('Gagal menyimpan pesanan ke database', 'error');
+      console.error(dbError);
+    }
+
+    // 2. KIRIM KE WHATSAPP
     let text = `*PESANAN BARU - ${store.nama}*\n`;
     text += `──────────────────\n`;
     text += `👤 Nama: ${name}\n`;
@@ -48,11 +68,15 @@ export default function CartModal({ open, onClose, store }: Props) {
     text += `──────────────────\n`;
     text += `_Mohon segera diproses. Terima kasih!_`;
 
-  // Ambil nomor WA dari data toko. Jika kosong, gunakan nomor cadangan.
-  const targetWA = store.whatsapp || '628192003025'; 
-  window.open(`https://wa.me/${targetWA}?text=${encodeURIComponent(text)}`, '_blank');
-  show('Membuka WhatsApp...', 'success');
-};
+    // Gunakan nomor WA dari data toko. Jika kosong, pakai nomor default.
+    const targetWA = store.whatsapp || '628192003025'; 
+    window.open(`https://wa.me/${targetWA}?text=${encodeURIComponent(text)}`, '_blank');
+    
+    show('Pesanan disimpan & membuka WhatsApp...', 'success');
+    setIsLoading(false);
+    clear(); // Opsional: Kosongkan keranjang setelah checkout
+    onClose();
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -126,9 +150,9 @@ export default function CartModal({ open, onClose, store }: Props) {
             <div className="flex justify-between font-bold text-slate-800 dark:text-white text-sm pt-1"><span>Total Bayar</span><span className="text-emerald-600 dark:text-emerald-400">{rp(storeTotal)}</span></div>
           </div>
 
-          <button onClick={checkout}
-            className="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 transition text-xs">
-            <MessageCircle className="w-4 h-4" /> Kirim Pesanan via WhatsApp
+          <button onClick={sendWhatsAppOrder} disabled={isLoading}
+            className="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 transition text-xs disabled:opacity-50">
+            <MessageCircle className="w-4 h-4" /> {isLoading ? 'Memproses...' : 'Kirim Pesanan via WhatsApp'}
           </button>
         </div>
       </div>
