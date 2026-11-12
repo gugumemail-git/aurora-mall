@@ -29,7 +29,11 @@ export default function AdminPage() {
     jam_buka: 8, jam_tutup: 22, eta: '15-20 mnt', ongkir: 5000, min_order: 10000, promo: '',
     rating: 5.0, reviews: 0, jarak: 0 
   });
-  const [productForm, setProductForm] = useState({ store_id: '', nama: '', harga: '', kategori: 'Makanan', deskripsi: '', foto: '' });
+  
+  // State Produk dengan tambahan Stok
+  const [productForm, setProductForm] = useState({ 
+    store_id: '', nama: '', harga: '', kategori: 'Makanan', deskripsi: '', foto: '', stok: '10' 
+  });
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
@@ -121,8 +125,13 @@ export default function AdminPage() {
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     const payload = {
-      store_id: productForm.store_id, nama: productForm.nama, harga: parseInt(productForm.harga),
-      kategori: productForm.kategori, deskripsi: productForm.deskripsi, foto: productForm.foto
+      store_id: productForm.store_id, 
+      nama: productForm.nama, 
+      harga: parseInt(productForm.harga),
+      kategori: productForm.kategori, 
+      deskripsi: productForm.deskripsi, 
+      foto: productForm.foto,
+      stok: parseInt(productForm.stok) // Menyimpan angka stok
     };
     let error;
     if (editId) {
@@ -138,7 +147,7 @@ export default function AdminPage() {
       setMessage(editId ? 'Menu diupdate!' : 'Menu ditambahkan!');
       setShowProductForm(false);
       setEditId(null);
-      setProductForm({ store_id: '', nama: '', harga: '', kategori: 'Makanan', deskripsi: '', foto: '' });
+      setProductForm({ store_id: '', nama: '', harga: '', kategori: 'Makanan', deskripsi: '', foto: '', stok: '10' });
       fetchData();
     }
   };
@@ -162,8 +171,7 @@ export default function AdminPage() {
     if (error) setMessage('Gagal hapus pesanan: ' + error.message);
     else { setMessage('Pesanan berhasil dihapus.'); fetchData(); }
   };
-
-  if (!session) {
+    if (!session) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
         <form onSubmit={handleLogin} className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-sm">
@@ -343,11 +351,10 @@ export default function AdminPage() {
             </div>
           </div>
         )}
-
-        {/* ================= TAB MENU ================= */}
+                {/* ================= TAB MENU ================= */}
         {activeTab === 'products' && (
            <div className="space-y-4">
-           <button onClick={() => { setEditId(null); setProductForm({ store_id: '', nama: '', harga: '', kategori: 'Makanan', deskripsi: '', foto: '' }); setShowProductForm(true); }}
+           <button onClick={() => { setEditId(null); setProductForm({ store_id: '', nama: '', harga: '', kategori: 'Makanan', deskripsi: '', foto: '', stok: '10' }); setShowProductForm(true); }}
              className="w-full bg-slate-900 text-white font-bold py-3 rounded-xl hover:bg-slate-800 flex justify-center items-center gap-2 transition">
              <PlusCircle className="w-5 h-5"/> Tambah Menu Baru
            </button>
@@ -369,6 +376,8 @@ export default function AdminPage() {
                    </div>
                    <div><label className="text-xs font-bold">Nama Menu</label><input required value={productForm.nama} onChange={e => setProductForm({...productForm, nama: e.target.value})} className="w-full border p-2 rounded-lg mt-1" /></div>
                    <div><label className="text-xs font-bold">Harga (Angka)</label><input required type="number" value={productForm.harga} onChange={e => setProductForm({...productForm, harga: e.target.value})} className="w-full border p-2 rounded-lg mt-1" /></div>
+                   {/* INPUT STOK BARU */}
+                   <div><label className="text-xs font-bold text-emerald-700">Kuota Stok (Angka)</label><input required type="number" value={productForm.stok} onChange={e => setProductForm({...productForm, stok: e.target.value})} className="w-full border p-2 rounded-lg mt-1 border-emerald-300" placeholder="Contoh: 10" /></div>
                    <div><label className="text-xs font-bold">Kategori Menu</label><input required value={productForm.kategori} onChange={e => setProductForm({...productForm, kategori: e.target.value})} className="w-full border p-2 rounded-lg mt-1" /></div>
                    <div><label className="text-xs font-bold">Deskripsi</label><textarea required value={productForm.deskripsi} onChange={e => setProductForm({...productForm, deskripsi: e.target.value})} className="w-full border p-2 rounded-lg mt-1" /></div>
                    
@@ -393,6 +402,7 @@ export default function AdminPage() {
                  <tr>
                    <th className="p-3">Menu & Toko</th>
                    <th className="p-3">Harga</th>
+                   <th className="p-3">Stok</th>
                    <th className="p-3">Status</th>
                    <th className="p-3 text-right">Aksi</th>
                  </tr>
@@ -410,6 +420,7 @@ export default function AdminPage() {
                          </div>
                        </td>
                        <td className="p-3 text-emerald-600 font-bold">Rp {p.harga.toLocaleString('id-ID')}</td>
+                       <td className="p-3 text-slate-600 font-bold">{p.stok || 0}</td>
                        <td className="p-3">
                          <button 
                            onClick={() => handleToggleAvailability(p.id, p.is_available)}
@@ -419,7 +430,7 @@ export default function AdminPage() {
                          </button>
                        </td>
                        <td className="p-3 text-right space-x-2">
-                         <button onClick={() => { setEditId(p.id); setProductForm({...p, harga: p.harga.toString()}); setShowProductForm(true); }} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"><Edit className="w-4 h-4"/></button>
+                         <button onClick={() => { setEditId(p.id); setProductForm({...p, harga: p.harga.toString(), stok: p.stok?.toString() || '0'}); setShowProductForm(true); }} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"><Edit className="w-4 h-4"/></button>
                          <button onClick={() => handleDeleteProduct(p.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4"/></button>
                        </td>
                      </tr>

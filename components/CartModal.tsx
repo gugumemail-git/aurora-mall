@@ -36,8 +36,8 @@ export default function CartModal({ open, onClose, store }: Props) {
 
     setIsLoading(true);
 
-    // 1. SIMPAN KE DATABASE SUPABASE (Termasuk No WA)
-        const { error: dbError } = await supabase.from('orders').insert([{
+        // 1. SIMPAN KE DATABASE SUPABASE
+    const { error: dbError } = await supabase.from('orders').insert([{
       store_id: store.id,
       customer_name: name,
       customer_wa: customerWa,
@@ -52,6 +52,17 @@ export default function CartModal({ open, onClose, store }: Props) {
     if (dbError) {
       show('Gagal menyimpan pesanan ke database', 'error');
       console.error(dbError);
+    } else {
+      // --- POTONG STOK OTOMATIS ---
+      for (const item of storeItems) {
+        if (item.stok !== undefined) {
+          const sisaStok = item.stok - item.jumlah;
+          await supabase.from('products').update({ 
+            stok: sisaStok,
+            is_available: sisaStok > 0 // Jika stok habis, otomatis set tidak tersedia
+          }).eq('id', item.id);
+        }
+      }
     }
 
     // 2. KIRIM KE WHATSAPP
