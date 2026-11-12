@@ -24,7 +24,11 @@ export default function AdminPage() {
   const [showProductForm, setShowProductForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
 
-  const [storeForm, setStoreForm] = useState({ nama: '', kategori: 'Makanan', deskripsi: '', cover: '', logo: '', whatsapp: '', jam_buka: 8, jam_tutup: 22 });
+  const [storeForm, setStoreForm] = useState({ 
+    nama: '', kategori: 'Makanan', deskripsi: '', cover: '', logo: '', whatsapp: '', 
+    jam_buka: 8, jam_tutup: 22,
+    eta: '15-20 mnt', ongkir: 5000, min_order: 10000, promo: '' // <-- Tambahan Baru
+  });
   const [productForm, setProductForm] = useState({ store_id: '', nama: '', harga: '', kategori: 'Makanan', deskripsi: '', foto: '' });
 
   useEffect(() => {
@@ -207,7 +211,7 @@ export default function AdminPage() {
         {/* ================= TAB TOKO ================= */}
         {activeTab === 'stores' && (
           <div className="space-y-4">
-            <button onClick={() => { setEditId(null); setStoreForm({ nama: '', kategori: 'Makanan', deskripsi: '', cover: '', logo: '', whatsapp: '', jam_buka: 8, jam_tutup: 22 }); setShowStoreForm(true); }}
+            <button onClick={() => { setEditId(null); setStoreForm({ nama: '', kategori: 'Makanan', deskripsi: '', cover: '', logo: '', whatsapp: '', jam_buka: 8, jam_tutup: 22, eta: '15-20 mnt', ongkir: 5000, min_order: 10000, promo: '' }); setShowStoreForm(true); }}
               className="w-full bg-slate-900 text-white font-bold py-3 rounded-xl hover:bg-slate-800 flex justify-center items-center gap-2 transition">
               <PlusCircle className="w-5 h-5"/> Tambah Toko Baru
             </button>
@@ -236,6 +240,35 @@ export default function AdminPage() {
                     <div>
                       <label className="text-xs font-bold text-emerald-700">Nomor WhatsApp Toko</label>
                       <input required value={storeForm.whatsapp} onChange={e => setStoreForm({...storeForm, whatsapp: e.target.value})} className="w-full border p-2 rounded-lg mt-1 border-emerald-300" placeholder="08123456789" />
+                    </div>
+                                        {/* INPUT DETAIL TOKO */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs font-bold">Jam Buka (Angka)</label>
+                        <input type="number" required value={storeForm.jam_buka} onChange={e => setStoreForm({...storeForm, jam_buka: parseInt(e.target.value)})} className="w-full border p-2 rounded-lg mt-1" placeholder="8" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold">Jam Tutup (Angka)</label>
+                        <input type="number" required value={storeForm.jam_tutup} onChange={e => setStoreForm({...storeForm, jam_tutup: parseInt(e.target.value)})} className="w-full border p-2 rounded-lg mt-1" placeholder="22" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold">Estimasi Waktu (Contoh: 15-20 mnt)</label>
+                      <input required value={storeForm.eta} onChange={e => setStoreForm({...storeForm, eta: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="15-20 mnt" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs font-bold">Ongkir (Angka)</label>
+                        <input type="number" required value={storeForm.ongkir} onChange={e => setStoreForm({...storeForm, ongkir: parseInt(e.target.value)})} className="w-full border p-2 rounded-lg mt-1" placeholder="5000" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold">Min. Order (Angka)</label>
+                        <input type="number" required value={storeForm.min_order} onChange={e => setStoreForm({...storeForm, min_order: parseInt(e.target.value)})} className="w-full border p-2 rounded-lg mt-1" placeholder="10000" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-orange-600">Promo (Kosongkan jika tidak ada)</label>
+                      <input value={storeForm.promo} onChange={e => setStoreForm({...storeForm, promo: e.target.value})} className="w-full border p-2 rounded-lg mt-1 border-orange-300" placeholder="Contoh: Diskon 20% menu kopi" />
                     </div>
                     <div>
                       <label className="text-xs font-bold block mb-1">Foto Cover (Landscape)</label>
