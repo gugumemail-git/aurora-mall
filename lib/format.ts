@@ -1,0 +1,1 @@
+export const rp = (n: number) => 'Rp ' + n.toLocaleString('id-ID');
