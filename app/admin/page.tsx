@@ -23,11 +23,10 @@ export default function AdminPage() {
   const [showProductForm, setShowProductForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
 
-  // Tambahkan whatsapp di state storeForm
+  // Pastikan whatsapp ada di dalam state
   const [storeForm, setStoreForm] = useState({ nama: '', kategori: 'Makanan', deskripsi: '', cover: '', logo: '', whatsapp: '', jam_buka: 8, jam_tutup: 22 });
   const [productForm, setProductForm] = useState({ store_id: '', nama: '', harga: '', kategori: 'Makanan', deskripsi: '', foto: '' });
 
-  // Cek Sesi Login
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session));
@@ -55,7 +54,6 @@ export default function AdminPage() {
     await supabase.auth.signOut();
   };
 
-  // --- FUNGSI UPLOAD GAMBAR ---
   const handleUploadImage = async (e: React.ChangeEvent<HTMLInputElement>, target: 'store_cover' | 'store_logo' | 'product_foto') => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -73,14 +71,14 @@ export default function AdminPage() {
     setIsUploading(false);
   };
 
-  // --- HANDLERS TOKO ---
   const handleSaveStore = async (e: React.FormEvent) => {
     e.preventDefault();
     const payload = {
       ...storeForm,
       slug: storeForm.nama.toLowerCase().replace(/ /g, '-'),
     };
-    // Pastikan nomor WA diawali 62 (bukan 0 atau +62)
+    
+    // Otomatis ubah 08xx menjadi 628xx
     if (payload.whatsapp.startsWith('0')) payload.whatsapp = '62' + payload.whatsapp.slice(1);
     if (payload.whatsapp.startsWith('+62')) payload.whatsapp = payload.whatsapp.slice(1);
 
@@ -112,7 +110,6 @@ export default function AdminPage() {
     else { setMessage('Toko dihapus.'); fetchData(); }
   };
 
-  // --- HANDLERS PRODUK ---
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     const payload = {
@@ -145,7 +142,6 @@ export default function AdminPage() {
     else { setMessage('Menu dihapus.'); fetchData(); }
   };
 
-  // --- LOGIN UI ---
   if (!session) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
@@ -161,7 +157,6 @@ export default function AdminPage() {
     );
   }
 
-  // --- DASHBOARD UI ---
   return (
     <div className="min-h-screen bg-slate-50 p-4 pb-20">
       <div className="max-w-4xl mx-auto">
@@ -194,7 +189,6 @@ export default function AdminPage() {
           </button>
         </div>
 
-        {/* ================= TAB TOKO ================= */}
         {activeTab === 'stores' && (
           <div className="space-y-4">
             <button onClick={() => { setEditId(null); setStoreForm({ nama: '', kategori: 'Makanan', deskripsi: '', cover: '', logo: '', whatsapp: '', jam_buka: 8, jam_tutup: 22 }); setShowStoreForm(true); }}
@@ -209,16 +203,29 @@ export default function AdminPage() {
                     <h2 className="font-bold text-lg">{editId ? 'Edit Toko' : 'Toko Baru'}</h2>
                     <button type="button" onClick={() => setShowStoreForm(false)}><X className="w-5 h-5"/></button>
                   </div>
+                  
+                  {/* FORM INPUT */}
                   <div className="space-y-4 text-sm">
-                    <div><label className="text-xs font-bold">Nama Toko</label><input required value={storeForm.nama} onChange={e => setStoreForm({...storeForm, nama: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="Bakso Pak Kumis" /></div>
-                    <div><label className="text-xs font-bold">Kategori</label><input required value={storeForm.kategori} onChange={e => setStoreForm({...storeForm, kategori: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="Makanan" /></div>
-                    <div><label className="text-xs font-bold">Deskripsi</label><textarea required value={storeForm.deskripsi} onChange={e => setStoreForm({...storeForm, deskripsi: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="Deskripsi..." /></div>
-                    
-                    {/* INPUT WHATSAPP */}
                     <div>
-                      <label className="text-xs font-bold">Nomor WhatsApp Toko (Awali 62)</label>
-                      <input required value={storeForm.whatsapp} onChange={e => setStoreForm({...storeForm, whatsapp: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="Contoh: 6281234567890" />
-                      <p className="text-[10px] text-slate-500 mt-1">*Gunakan angka 62, jangan pakai 0 atau +.</p>
+                      <label className="text-xs font-bold">Nama Toko</label>
+                      <input required value={storeForm.nama} onChange={e => setStoreForm({...storeForm, nama: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="Bakso Pak Kumis" />
+                    </div>
+                    
+                    <div>
+                      <label className="text-xs font-bold">Kategori</label>
+                      <input required value={storeForm.kategori} onChange={e => setStoreForm({...storeForm, kategori: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="Makanan" />
+                    </div>
+                    
+                    <div>
+                      <label className="text-xs font-bold">Deskripsi</label>
+                      <textarea required value={storeForm.deskripsi} onChange={e => setStoreForm({...storeForm, deskripsi: e.target.value})} className="w-full border p-2 rounded-lg mt-1" placeholder="Deskripsi..." />
+                    </div>
+
+                    {/* KOLOM WHATSAPP */}
+                    <div>
+                      <label className="text-xs font-bold text-emerald-700">Nomor WhatsApp Toko</label>
+                      <input required value={storeForm.whatsapp} onChange={e => setStoreForm({...storeForm, whatsapp: e.target.value})} className="w-full border p-2 rounded-lg mt-1 border-emerald-300" placeholder="Contoh: 08123456789 atau 628123456789" />
+                      <p className="text-[10px] text-slate-500 mt-1">*Ketik nomor WA aktif toko ini.</p>
                     </div>
 
                     <div>
@@ -245,7 +252,6 @@ export default function AdminPage() {
               </div>
             )}
 
-            {/* Tabel Toko (Sama seperti sebelumnya) */}
             <div className="bg-white rounded-2xl shadow-sm border overflow-x-auto">
               <table className="w-full text-left text-sm min-w-[500px]">
                 <thead className="bg-slate-50 border-b">
@@ -271,7 +277,6 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* ================= TAB PRODUK (Sama seperti sebelumnya) ================= */}
         {activeTab === 'products' && (
            <div className="space-y-4">
            <button onClick={() => { setEditId(null); setProductForm({ store_id: '', nama: '', harga: '', kategori: 'Makanan', deskripsi: '', foto: '' }); setShowProductForm(true); }}
