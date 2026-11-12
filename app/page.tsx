@@ -1,11 +1,12 @@
 'use client';
 import { useMemo, useState, useEffect } from 'react';
 import { Search, Sparkles, Flame, Heart, MapPin } from 'lucide-react';
-import { STORES } from '@/lib/data';
 import { isOpen } from '@/lib/store';
 import StoreCard from '@/components/StoreCard';
 import StoreModal from '@/components/StoreModal';
 import ThemeToggle from '@/components/ThemeToggle';
+import { supabase } from '@/lib/supabase';
+import type { Store } from '@/lib/types';
 
 const FILTERS = [
   { key: 'all', label: 'Semua' },
@@ -25,6 +26,9 @@ const QUICK = [
 type FilterKey = typeof FILTERS[number]['key'];
 
 export default function HomePage() {
+  const [stores, setStores] = useState<Store[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
   const [filter, setFilter] = useState<FilterKey>('all');
@@ -38,6 +42,33 @@ export default function HomePage() {
       const saved = localStorage.getItem('pasar_fav');
       if (saved) setFavs(JSON.parse(saved));
     } catch {}
+
+    async function fetchStores() {
+      const { data, error } = await supabase.from('stores').select('*');
+      if (!error && data) {
+        const formatted = data.map((d: any) => ({
+          id: d.id,
+          slug: d.slug,
+          nama: d.nama,
+          kategori: d.kategori,
+          deskripsi: d.deskripsi,
+          cover: d.cover,
+          logo: d.logo,
+          rating: d.rating,
+          reviews: d.reviews,
+          jarak: d.jarak,
+          eta: d.eta,
+          ongkir: d.ongkir,
+          minOrder: d.min_order,
+          jam: { buka: d.jam_buka, tutup: d.jam_tutup },
+          promo: d.promo,
+          populer: d.populer
+        }));
+        setStores(formatted);
+      }
+      setLoading(false);
+    }
+    fetchStores();
   }, []);
 
   const toggleFav = (id: string) => {
@@ -48,10 +79,10 @@ export default function HomePage() {
     });
   };
 
-  const categories = useMemo(() => ['all', ...new Set(STORES.map(s => s.kategori))], []);
+  const categories = useMemo(() => ['all', ...new Set(stores.map(s => s.kategori))], [stores]);
 
   const filtered = useMemo(() => {
-    let list = [...STORES];
+    let list = [...stores];
     if (category !== 'all') list = list.filter(s => s.kategori === category);
     if (filter === 'open') list = list.filter(isOpen);
     if (filter === 'promo') list = list.filter(s => s.promo);
@@ -71,10 +102,14 @@ export default function HomePage() {
     else if (sort === 'promo') list.sort((a, b) => (b.promo ? 1 : 0) - (a.promo ? 1 : 0));
     else list.sort((a, b) => b.populer - a.populer);
     return list;
-  }, [category, filter, search, sort, favOnly, favs]);
+  }, [category, filter, search, sort, favOnly, favs, stores]);
 
-  const promos = STORES.filter(s => s.promo);
-  const activeStore = activeId ? STORES.find(s => s.id === activeId) : null;
+  const promos = stores.filter(s => s.promo);
+  const activeStore = activeId ? stores.find(s => s.id === activeId) : null;
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center text-sm font-bold text-slate-500">Memuat Pasar Kita...</div>;
+  }
 
   return (
     <>
@@ -107,7 +142,6 @@ export default function HomePage() {
       </header>
 
       <main className="max-w-2xl mx-auto px-4 pt-4 pb-16">
-        {/* HERO */}
         <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-600 via-teal-600 to-emerald-700 p-6 mb-5 shadow-xl shadow-emerald-600/20">
           <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-white/10 blur-2xl" />
           <div className="absolute -bottom-20 -left-10 w-56 h-56 rounded-full bg-white/10 blur-3xl" />
@@ -133,7 +167,6 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* KATEGORI */}
         <section className="mb-5">
           <div className="flex items-center justify-between mb-2.5">
             <h3 className="font-bold text-slate-800 dark:text-white text-sm">Kategori</h3>
@@ -152,7 +185,6 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* PROMO */}
         {promos.length > 0 && (
           <section className="mb-5">
             <div className="flex items-center justify-between mb-2.5">
@@ -176,7 +208,6 @@ export default function HomePage() {
           </section>
         )}
 
-        {/* FILTER CHIPS */}
         <section className="mb-4 flex items-center gap-2 overflow-x-auto hide-scrollbar -mx-4 px-4">
           {FILTERS.map(f => (
             <button key={f.key} onClick={() => setFilter(f.key)}
@@ -186,7 +217,6 @@ export default function HomePage() {
           ))}
         </section>
 
-        {/* LIST TOKO */}
         <section>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-slate-800 dark:text-white text-sm">
